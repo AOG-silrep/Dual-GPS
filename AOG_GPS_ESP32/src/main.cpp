@@ -27,7 +27,7 @@ void saveDiagnostics();
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
 const byte DNS_PORT = 53;
-IPAddress apIP( 192, 168, 1, 1 ); //IP address for access point
+IPAddress wifiIP( 192, 168, 1, 1 ); //IP address for access point
 IPAddress ipDestination( 192, 168, 5, 255 ); //IP address to send UDP data to
 time_t lastHelloReceivedMillis;
 
@@ -74,15 +74,20 @@ void setup( void ) {
   pinMode( gpsConfig.gpioDcPowerGood, INPUT );
 
   initWiFi();
-  apIP = WiFi.localIP();
 
   dnsServer.start( DNS_PORT, "*", apIP );
 
   Serial.println( "\n\nWiFi parameters:" );
   Serial.print( "Mode: " );
-  Serial.println( WiFi.getMode() == WIFI_AP ? "Station" : "Client" );
+  if( WiFi.getMode() == WIFI_AP_STA ){
+    Serial.println( "access point" );
+    wifiIP = WiFi.softAPIP();
+  } else {
+    Serial.println( "client" );
+    wifiIP = WiFi.localIP();
+  }
   Serial.print( "IP address: " );
-  Serial.println( WiFi.getMode() == WIFI_AP ? WiFi.softAPIP() : WiFi.localIP() );
+  Serial.println( wifiIP );
 
   initESPUI();
 
