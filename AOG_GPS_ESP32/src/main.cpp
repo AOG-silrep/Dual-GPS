@@ -9,7 +9,6 @@
 #include <ESPmDNS.h>
 #include <WiFi.h>
 
-#include <DNSServer.h>
 #include <ESPUI.h>
 
 #include <AsyncElegantOTA.h>
@@ -35,7 +34,6 @@ time_t lastHelloReceivedMillis;
 // external Libraries
 ///////////////////////////////////////////////////////////////////////////
 
-DNSServer dnsServer;
 AsyncUDP udpRoof;
 SoftwareSerial NmeaTransmitter;
 
@@ -74,8 +72,6 @@ void setup( void ) {
   pinMode( gpsConfig.gpioDcPowerGood, INPUT );
 
   initWiFi();
-
-  dnsServer.start( DNS_PORT, "*", apIP );
 
   Serial.println( "\n\nWiFi parameters:" );
   Serial.print( "Mode: " );
@@ -150,6 +146,5 @@ void setup( void ) {
 }
 
 void loop( void ) {
-  dnsServer.processNextRequest();
   vTaskDelay( 100 );
 }
