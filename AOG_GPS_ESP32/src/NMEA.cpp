@@ -97,7 +97,7 @@ void buildOGI() {
 
 	OGIdigit = 7;
 
-	//allways +48 to get ASCII: "0" = 48
+	//always +48 to get ASCII: "0" = 48
 
 	// time stamp hhmmss
 	byte time = UBXPVT1[UBXRingCount1].hour;
@@ -377,7 +377,7 @@ void buildGGA() {
 
 	GGAdigit = 7;
 
-	//allways +48 to get ASCII: "0" = 48
+	//always +48 to get ASCII: "0" = 48
 
 	// time stamp hhmmss
 	byte time = UBXPVT1[UBXRingCount1].hour;
@@ -402,9 +402,6 @@ void buildGGA() {
 
 	//lat: xx min min . min/10 .. 4.5 digits
 	long Lat = UBXPVT1[UBXRingCount1].lat;
-//	if (filterGPSpos || virtAntPosPresent) { Lat = long(virtLat * 10000000); }
-//	else { Lat = UBXPVT1[UBXRingCount1].lat; }
-	//if (debugmode) { Serial.print("UBX1 Lat (deg *10^-7): "); Serial.println(Lat); }
 	//N/S?
 	byte Sign = 0x53;//S
 	if (Lat > 0) { Sign = 0x4E; }//N	
@@ -434,11 +431,8 @@ void buildGGA() {
 	GGABuffer[GGAdigit++] = Sign;
 	GGABuffer[GGAdigit++] = 0x2C;//,
 
-	//lon: xxx min min . min/10 .. 5.5 digits
+	// lon: xxx min min . min/10 .. 5.5 digits
 	long Lon = UBXPVT1[UBXRingCount1].lon;
-//	if (filterGPSpos || virtAntPosPresent) { Lon = long(virtLon * 10000000); }
-//	else { Lon = UBXPVT1[UBXRingCount1].lon; }
-	//if (debugmode) { Serial.print("UBX1 Lon (deg *10^-7): "); Serial.println(Lon); }
 	//E/W?
 	if (Lon < 0) { Sign = 0x57; }//W
 	else { Sign = 0x45; }//E
@@ -471,7 +465,6 @@ void buildGGA() {
 	GGABuffer[GGAdigit++] = 0x2C;//,
 
 	//fix type
-		//fix type
 	if (bGGAexists) { GGABuffer[GGAdigit++] = cFixQualGGA; }// code by ai, 07.10.2020: use the GGA Message to determine Fix-Quality	
 	else {
 		if ((bitRead(UBXPVT1[UBXRingCount1].flags, 1) == true) && (UBXPVT1[UBXRingCount1].fixType == 3)) { GGABuffer[GGAdigit++] = 52; }//4 = RTK
@@ -567,19 +560,9 @@ void buildVTG() {
 
 	VTGdigit = 7;
 
-	//allways +48 to get ASCII: "0" = 48
+	//always +48 to get ASCII: "0" = 48
 	double tempGPSHead;
-//	if (gpsConfig.useMixedHeading) {
-//		if (gpsConfig.debugmode) { Serial.print("mix Heading to OGI present: "); Serial.println(HeadingMix); }
-		tempGPSHead = HeadingMix; //decided in Heading calc
-/*	}
-	else {
-		if (dualGPSHeadingPresent) { tempGPSHead = HeadingRelPosNED; }
-		else {
-			if (gpsConfig.debugmode) { Serial.print("VTG Heading to OGI present: "); Serial.println(HeadingVTG); }
-			tempGPSHead = HeadingVTG;
-		}
-	}*/
+	tempGPSHead = HeadingMix; //decided in Heading calc
 	tempbyt = byte(tempGPSHead / 100);
 	tempGPSHead = tempGPSHead - tempbyt * 100;
 	VTGBuffer[VTGdigit++] = tempbyt + 48;
@@ -595,7 +578,7 @@ void buildVTG() {
 	VTGBuffer[VTGdigit++] = 0x2C;//,
 	VTGBuffer[VTGdigit++] = 0x54;//T
 	VTGBuffer[VTGdigit++] = 0x2C;//,
-	//no magnect heading
+	//no magnetic heading
 	VTGBuffer[VTGdigit++] = 0x2C;//,
 	//no M
 	VTGBuffer[VTGdigit++] = 0x2C;//,
@@ -636,9 +619,12 @@ void buildVTG() {
 
 	VTGBuffer[VTGdigit++] = 0x2C;//,
 
+	//Kilometers
 	VTGBuffer[VTGdigit++] = 0x4B;//K
 
 	VTGBuffer[VTGdigit++] = 0x2C;//,
+
+	//Mode
 	VTGBuffer[VTGdigit++] = 0x44;//D
 
 	VTGBuffer[VTGdigit++] = 0x2A;//*
@@ -674,7 +660,7 @@ void buildRMC() {
 
 	RMCdigit = 7;
 
-	//always +48 to get ASCII: "0" = 48
+	// always +48 to get ASCII: "0" = 48
 	// time stamp hhmmss
 	byte time = UBXPVT1[UBXRingCount1].hour;
 	RMCBuffer[RMCdigit++] = (time / 10) + 48;
