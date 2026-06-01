@@ -148,6 +148,7 @@ extern NAV_PVT UBXPVT1[sizeOfUBXArray];
 extern uint8_t OGIBuffer[90], HDTBuffer[24], VTGBuffer[55], GGABuffer[80], RMCBuffer[80];
 extern bool newOGI, newHDT, newGGA, newVTG;
 extern uint8_t OGIdigit, GGAdigit, VTGdigit, HDTdigit, RMCdigit;
+extern uint8_t GGABufferLength, VTGBufferLength, HDTBufferLength, RMCBufferLength;
 
 extern SoftwareSerial NmeaTransmitter;
 extern QueueHandle_t HDTQueue;

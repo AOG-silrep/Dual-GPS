@@ -12,22 +12,22 @@ void NmeaOut ( void* z ){
     
     if( gpsConfig.sendSerialNmeaGGA ){
       if( xQueueReceive( GGAQueue, &GGAReceiveBuffer, 0 ) == pdTRUE ){
-        NmeaTransmitter.write( GGAReceiveBuffer, 80 );
+        NmeaTransmitter.write( GGAReceiveBuffer, GGABufferLength );
       }
     }
     if( gpsConfig.sendSerialNmeaVTG ){
       if( xQueueReceive( VTGQueue, &VTGReceiveBuffer, 0 ) == pdTRUE ){
-        NmeaTransmitter.write( VTGReceiveBuffer, 55 );
+        NmeaTransmitter.write( VTGReceiveBuffer, VTGBufferLength );
       }
     }
     if( gpsConfig.sendSerialNmeaHDT ){
       if( xQueueReceive( HDTQueue, &HDTReceiveBuffer, 0 ) == pdTRUE ){
-        NmeaTransmitter.write( HDTReceiveBuffer, 24 );
+        NmeaTransmitter.write( HDTReceiveBuffer, HDTBufferLength );
       }
     }
     if( gpsConfig.sendSerialNmeaRMC ){
       if( xQueueReceive( RMCQueue, &RMCReceiveBuffer, 0 ) == pdTRUE ){
-        NmeaTransmitter.write( RMCReceiveBuffer, 80 );
+        NmeaTransmitter.write( RMCReceiveBuffer, RMCBufferLength );
       }
     }
     xTaskDelayUntil( &xLastWakeTime, xFrequency );

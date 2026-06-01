@@ -81,6 +81,7 @@ $PAOGI
 uint8_t OGIBuffer[90], HDTBuffer[24], VTGBuffer[55], GGABuffer[80], RMCBuffer[80];
 bool newOGI = false, newHDT = false, newGGA = false, newVTG = false, newRMC = false;
 uint8_t OGIdigit = 0, GGAdigit = 0, VTGdigit = 0, HDTdigit = 0, RMCdigit = 0;
+uint8_t GGABufferLength, VTGBufferLength, HDTBufferLength, RMCBufferLength;
 
 void buildOGI() {
 	byte CRC = 0;
@@ -355,6 +356,8 @@ void buildHDT() {
 	HDTBuffer[17] = 0x0D;
 	HDTBuffer[18] = 0x0A;
 	HDTdigit = 19;
+
+	HDTBufferLength = HDTdigit;
 	newHDT = true;
 }
 
@@ -528,7 +531,7 @@ void buildGGA() {
 	GGABuffer[GGAdigit++] = 0x0D;
 	GGABuffer[GGAdigit++] = 0x0A;
 
-
+	GGABufferLength = GGAdigit;
 	newGGA = true;
 
 	/*
@@ -643,6 +646,7 @@ void buildVTG() {
 	VTGBuffer[VTGdigit++] = 0x0D;
 	VTGBuffer[VTGdigit++] = 0x0A;
 
+	VTGBufferLength = VTGdigit;
 	newVTG = true;
 }
 
@@ -824,5 +828,6 @@ void buildRMC() {
 	RMCBuffer[RMCdigit++] = 0x0D;
 	RMCBuffer[RMCdigit++] = 0x0A;
 
+	RMCBufferLength = RMCdigit;
 	newRMC = true;
 }
