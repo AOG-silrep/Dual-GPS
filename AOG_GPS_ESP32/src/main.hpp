@@ -33,6 +33,9 @@ extern uint64_t NavPvtCount;
 extern time_t NavPvtMillis;
 extern time_t previousRelPosNedMillis;
 extern time_t previousNavPvtMillis;
+extern time_t GGATimestampMillis;
+extern time_t previousGGATimestampMillis;
+extern time_t GGAReceivedMillis;
 
 extern uint32_t mphPwm;
 

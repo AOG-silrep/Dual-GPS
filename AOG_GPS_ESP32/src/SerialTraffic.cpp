@@ -8,6 +8,9 @@ time_t NavPvtMillis;
 uint64_t RelPosNedCount;
 time_t previousRelPosNedMillis;
 time_t previousNavPvtMillis;
+time_t GGATimestampMillis;
+time_t previousGGATimestampMillis;
+time_t GGAReceivedMillis;
 
 void getSerialUBX( void* z ) {
 	bool checksumOk1 = false;
@@ -38,6 +41,26 @@ void getSerialUBX( void* z ) {
 				if (incomByte1 == 10) { // ASCII(10) <LF> (Linefeed) ends the message
 					bNMEAstarted = false;
 					if (sNMEA.substring(3, 6) == "GGA") { // GGA Message found
+						// Parse the HHMMSS.ss timestamp from field 1 to measure F9P message interval
+						int firstComma = sNMEA.indexOf(',');
+						if (firstComma > 0 && firstComma + 9 < (int)sNMEA.length()) {
+							int t = firstComma + 1;
+							if (sNMEA[t] >= '0' && sNMEA[t] <= '2') { // sanity check on hour
+								uint8_t hh = (sNMEA[t]   - '0') * 10 + (sNMEA[t+1] - '0');
+								uint8_t mm = (sNMEA[t+2] - '0') * 10 + (sNMEA[t+3] - '0');
+								uint8_t ss = (sNMEA[t+4] - '0') * 10 + (sNMEA[t+5] - '0');
+								// fractional: .cc = centiseconds, multiply by 10 to get ms
+								uint16_t frac = 0;
+								if (sNMEA[t+6] == '.') {
+									frac = (sNMEA[t+7] - '0') * 100 + (sNMEA[t+8] - '0') * 10;
+								}
+								uint32_t ts = ((uint32_t)hh * 3600 + mm * 60 + ss) * 1000 + frac;
+								previousGGATimestampMillis = GGATimestampMillis;
+								GGATimestampMillis = ts;
+							}
+						}
+						GGAReceivedMillis = millis();
+
 						// the fix quality is the char after the sixth ',' - so look for sixth ','
 						iPos = -1;
 						i = 0;

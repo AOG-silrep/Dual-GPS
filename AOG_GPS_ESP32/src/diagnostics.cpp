@@ -56,6 +56,14 @@ void diagnosticDisplay ( void* z ){
     str += "\nNAV-PVT to RelPosNED difference: ";
     str += NavPvtMillis - RelPosNedMillis;
     str += " millis apart";
+    str += "\nGGA: ";
+    if( GGAReceivedMillis == 0 ){
+      str += "none received";
+    } else {
+      time_t ggaInterval = ( time_t )GGATimestampMillis - ( time_t )previousGGATimestampMillis;
+      str += ggaInterval;
+      str += " millisecond fix-to-fix";
+    }
 
     Control* labelGpsReceiversHandle = ESPUI.getControl( labelGpsReceivers );
     if( power == LOW or powerUnstable == true or elapsedNavPvtMillis > 1000 or elapsedRelPosNedMillis > 1000 ){
