@@ -265,11 +265,11 @@ struct GPS_Config {
   double virtAntForew = 0.0;            //cm to move virtual Antenna foreward
   double headingAngleCorrection = 90;
   double AntDistDeviationFactor = 1.2;  // factor (>1), of whom length vector from both GPS units can max differ from AntDist before stop heading calc
-  uint8_t MaxHeadChangPerSec = 30;         // degrees that heading is allowed to change per second
+  uint8_t MaxHeadChangPerSec = 50;         // degrees that heading is allowed to change per second
 
   uint8_t checkUBXFlags = 1;               //UBX sending quality flags, when used with RTK sometimes 
   uint8_t filterGPSposOnWeakSignal = 1;    //filter GPS Position on weak GPS signal
-  uint8_t GPSPosCorrByRoll = 1;            // 0 = off, 1 = correction of position by roll (AntHeight must be > 0)
+  uint8_t GPSPosCorrByRoll = 0;            // 0 = off, 1 = correction of position by roll (AntHeight must be > 0)
   double rollAngleCorrection = 0.0; 
 
   bool sendOGI = 1;                     //1: send NMEA message 0: off
