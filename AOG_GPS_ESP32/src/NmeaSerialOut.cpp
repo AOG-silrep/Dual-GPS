@@ -6,28 +6,28 @@ uint16_t nmeaMessageDelay;
 void NmeaOut ( void* z ){
   TickType_t xFrequency = (( uint16_t ) 1000 / gpsConfig.serialNmeaMessagesPerSec ) - 10;
   TickType_t xLastWakeTime = xTaskGetTickCount();
-  uint8_t HDTReceiveBuffer[sizeOfHDTBuffer], VTGReceiveBuffer[sizeOfVTGBuffer], GGAReceiveBuffer[sizeOfGGABuffer], RMCReceiveBuffer[sizeOfRMCBuffer];
+  NmeaQueueMessage message;
 
 	for( ;;  ){
-    
+
     if( gpsConfig.sendSerialNmeaGGA ){
-      if( xQueueReceive( GGAQueue, &GGAReceiveBuffer, 0 ) == pdTRUE ){
-        NmeaTransmitter.write( GGAReceiveBuffer, GGABufferLength );
+      if( xQueueReceive( GGAQueue, &message, 0 ) == pdTRUE ){
+        NmeaTransmitter.write( message.data, message.length );
       }
     }
     if( gpsConfig.sendSerialNmeaVTG ){
-      if( xQueueReceive( VTGQueue, &VTGReceiveBuffer, 0 ) == pdTRUE ){
-        NmeaTransmitter.write( VTGReceiveBuffer, VTGBufferLength );
+      if( xQueueReceive( VTGQueue, &message, 0 ) == pdTRUE ){
+        NmeaTransmitter.write( message.data, message.length );
       }
     }
     if( gpsConfig.sendSerialNmeaHDT ){
-      if( xQueueReceive( HDTQueue, &HDTReceiveBuffer, 0 ) == pdTRUE ){
-        NmeaTransmitter.write( HDTReceiveBuffer, HDTBufferLength );
+      if( xQueueReceive( HDTQueue, &message, 0 ) == pdTRUE ){
+        NmeaTransmitter.write( message.data, message.length );
       }
     }
     if( gpsConfig.sendSerialNmeaRMC ){
-      if( xQueueReceive( RMCQueue, &RMCReceiveBuffer, 0 ) == pdTRUE ){
-        NmeaTransmitter.write( RMCReceiveBuffer, RMCBufferLength );
+      if( xQueueReceive( RMCQueue, &message, 0 ) == pdTRUE ){
+        NmeaTransmitter.write( message.data, message.length );
       }
     }
     xTaskDelayUntil( &xLastWakeTime, xFrequency );

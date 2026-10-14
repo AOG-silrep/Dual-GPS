@@ -73,10 +73,17 @@ int16_t antDistDeviation;
 NAV_PVT UBXPVT1[sizeOfUBXArray];
 NAV_RELPOSNED UBXRelPosNED[sizeOfUBXArray];
 
-QueueHandle_t HDTQueue = xQueueCreate( 1, sizeof( HDTBuffer ));
-QueueHandle_t VTGQueue = xQueueCreate( 1, sizeof( VTGBuffer ));
-QueueHandle_t GGAQueue = xQueueCreate( 1, sizeof( GGABuffer ));
-QueueHandle_t RMCQueue = xQueueCreate( 1, sizeof( RMCBuffer ));
+QueueHandle_t HDTQueue = xQueueCreate( 1, sizeof( NmeaQueueMessage ));
+QueueHandle_t VTGQueue = xQueueCreate( 1, sizeof( NmeaQueueMessage ));
+QueueHandle_t GGAQueue = xQueueCreate( 1, sizeof( NmeaQueueMessage ));
+QueueHandle_t RMCQueue = xQueueCreate( 1, sizeof( NmeaQueueMessage ));
+
+void queueSerialNmea( QueueHandle_t queue, const uint8_t* buffer, uint8_t length ){
+	NmeaQueueMessage message;
+	message.length = length;
+	memcpy( message.data, buffer, length );
+	xQueueOverwrite( queue, &message );
+}
 
 bool powerUnstable = false;
 time_t powerUnstableMillis = 0;
@@ -736,16 +743,16 @@ void headingAndPosition ( void* z ){
 				newHDT = false;
 			}
 			if( gpsConfig.sendSerialNmeaHDT ){
-				xQueueOverwrite( HDTQueue, &HDTBuffer );
+				queueSerialNmea( HDTQueue, HDTBuffer, HDTdigit );
 			}
 			if( gpsConfig.sendSerialNmeaVTG ){
-				xQueueOverwrite( VTGQueue, &VTGBuffer );
+				queueSerialNmea( VTGQueue, VTGBuffer, VTGdigit );
 			}
 			if( gpsConfig.sendSerialNmeaGGA ){
-				xQueueOverwrite( GGAQueue, &GGABuffer );
+				queueSerialNmea( GGAQueue, GGABuffer, GGAdigit );
 			}
 			if( gpsConfig.sendSerialNmeaRMC ){
-				xQueueOverwrite( RMCQueue, &RMCBuffer );
+				queueSerialNmea( RMCQueue, RMCBuffer, RMCdigit );
 			}
 			gpsHzCurrentMillis = millis() - previousMillisHz;
 			previousMillisHz = millis();

@@ -152,7 +152,15 @@ constexpr uint8_t sizeOfOGIBuffer = 96, sizeOfHDTBuffer = 24, sizeOfVTGBuffer = 
 extern uint8_t OGIBuffer[sizeOfOGIBuffer], HDTBuffer[sizeOfHDTBuffer], VTGBuffer[sizeOfVTGBuffer], GGABuffer[sizeOfGGABuffer], RMCBuffer[sizeOfRMCBuffer];
 extern bool newOGI, newHDT, newGGA, newVTG;
 extern uint8_t OGIdigit, GGAdigit, VTGdigit, HDTdigit, RMCdigit;
-extern uint8_t GGABufferLength, VTGBufferLength, HDTBufferLength, RMCBufferLength;
+
+//serial NMEA queue item, the length travels with the sentence so the receiver never reads a newer sentence's length
+constexpr uint8_t sizeOfNmeaQueueBuffer = 80;//largest serial NMEA sentence ( GGA / RMC )
+static_assert( sizeOfHDTBuffer <= sizeOfNmeaQueueBuffer && sizeOfVTGBuffer <= sizeOfNmeaQueueBuffer
+            && sizeOfGGABuffer <= sizeOfNmeaQueueBuffer && sizeOfRMCBuffer <= sizeOfNmeaQueueBuffer, "NMEA queue buffer too small" );
+struct NmeaQueueMessage {
+    uint8_t length;
+    uint8_t data[sizeOfNmeaQueueBuffer];
+};
 
 extern SoftwareSerial NmeaTransmitter;
 extern QueueHandle_t HDTQueue;
