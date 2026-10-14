@@ -109,22 +109,22 @@ void diagnosticDisplay ( void* z ){
     {
       str = "";
       if( gpsConfig.sendSerialNmeaVTG ){
-        for( uint8_t i = 0; i < 55; i++ ){
+        for( uint8_t i = 0; i < sizeOfVTGBuffer; i++ ){
           str += ( char ) VTGBuffer[i];
         }
       }
       if( gpsConfig.sendSerialNmeaGGA ){
-        for( uint8_t i = 0; i < 80; i++ ){
+        for( uint8_t i = 0; i < sizeOfGGABuffer; i++ ){
           str += ( char ) GGABuffer[i];
         }
       }
       if( gpsConfig.sendSerialNmeaHDT ){
-        for( uint8_t i = 0; i < 24; i++ ){
+        for( uint8_t i = 0; i < sizeOfHDTBuffer; i++ ){
           str += ( char ) HDTBuffer[i];
         }
       }
       if( gpsConfig.sendSerialNmeaRMC ){
-        for( uint8_t i = 0; i < 80; i++ ){
+        for( uint8_t i = 0; i < sizeOfRMCBuffer; i++ ){
           str += ( char ) RMCBuffer[i];
         }
       }

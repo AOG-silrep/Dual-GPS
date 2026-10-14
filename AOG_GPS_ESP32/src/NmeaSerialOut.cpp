@@ -6,7 +6,7 @@ uint16_t nmeaMessageDelay;
 void NmeaOut ( void* z ){
   TickType_t xFrequency = (( uint16_t ) 1000 / gpsConfig.serialNmeaMessagesPerSec ) - 10;
   TickType_t xLastWakeTime = xTaskGetTickCount();
-  uint8_t HDTReceiveBuffer[24], VTGReceiveBuffer[55], GGAReceiveBuffer[80], RMCReceiveBuffer[80];
+  uint8_t HDTReceiveBuffer[sizeOfHDTBuffer], VTGReceiveBuffer[sizeOfVTGBuffer], GGAReceiveBuffer[sizeOfGGABuffer], RMCReceiveBuffer[sizeOfRMCBuffer];
 
 	for( ;;  ){
     

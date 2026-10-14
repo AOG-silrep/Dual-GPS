@@ -78,7 +78,7 @@ $PAOGI
 #include "main.hpp"
 
 //NMEA
-uint8_t OGIBuffer[90], HDTBuffer[24], VTGBuffer[55], GGABuffer[80], RMCBuffer[80];
+uint8_t OGIBuffer[sizeOfOGIBuffer], HDTBuffer[sizeOfHDTBuffer], VTGBuffer[sizeOfVTGBuffer], GGABuffer[sizeOfGGABuffer], RMCBuffer[sizeOfRMCBuffer];
 bool newOGI = false, newHDT = false, newGGA = false, newVTG = false, newRMC = false;
 uint8_t OGIdigit = 0, GGAdigit = 0, VTGdigit = 0, HDTdigit = 0, RMCdigit = 0;
 uint8_t GGABufferLength, VTGBufferLength, HDTBufferLength, RMCBufferLength;
