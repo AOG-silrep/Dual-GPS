@@ -30,6 +30,8 @@ extern uint16_t labelGpsMessageHz;
 extern uint64_t RelPosNedCount;
 extern time_t RelPosNedMillis;
 extern uint64_t NavPvtCount;
+extern uint32_t InvalidNavPvtCount;//RAM only, not saved: can count at GPS rate while there is no fix
+extern uint32_t JumpNavPvtCount;
 extern time_t NavPvtMillis;
 extern time_t previousRelPosNedMillis;
 extern time_t previousNavPvtMillis;

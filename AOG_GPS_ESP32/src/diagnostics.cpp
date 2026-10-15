@@ -95,6 +95,10 @@ void diagnosticDisplay ( void* z ){
     str += diagnostics.badChecksumNavPVTCount;
     str += "\nNavPVT wrong length: ";
     str += diagnostics.wrongLengthNavPVTCount;
+    str += "\nNavPVT invalid position: ";
+    str += InvalidNavPvtCount;
+    str += "\nNavPVT position jump: ";
+    str += JumpNavPvtCount;
     str += "\nRelPosNED message count: ";
     str += RelPosNedCount;
     str += "\nRelPosNED bad checksum: ";

@@ -3,6 +3,8 @@
 #include "main.hpp"
 
 uint64_t NavPvtCount;
+uint32_t InvalidNavPvtCount;
+uint32_t JumpNavPvtCount;
 time_t RelPosNedMillis;
 time_t NavPvtMillis;
 uint64_t RelPosNedCount;
@@ -11,6 +13,41 @@ time_t previousNavPvtMillis;
 time_t GGATimestampMillis;
 time_t previousGGATimestampMillis;
 time_t GGAReceivedMillis;
+
+//NAV-PVT plausibility check, so a bad position never becomes UBXRingCount1
+constexpr int32_t nullIslandBox = 10000000;     //1° around 0,0 is open ocean, deg * 10^-7
+constexpr double maxPlausibleSpeed = 30.0;      //m/s ( ~108 km/h )
+constexpr double jumpMargin = 10.0;             //m, room for fix type changes
+constexpr uint8_t maxJumpRejects = 10;          //after this many jumps in a row accept the new position
+constexpr uint32_t msPerGpsWeek = 604800000;    //iTOW wraps weekly
+
+static bool hasLastGoodPVT = false;
+static int32_t lastGoodLat = 0, lastGoodLon = 0;
+static uint32_t lastGoodITOW = 0;
+static uint8_t jumpRejects = 0;
+static double jumpDistance = 0;
+
+static bool isPositionValid( const NAV_PVT& pvt ) {
+	if (pvt.fixType == 0 || pvt.fixType == 5) { return false; }//no fix or time only
+	if (gpsConfig.checkUBXFlags && !bitRead(pvt.flags, 0)) { return false; }//gnssFixOK
+	if (bitRead(pvt.flags3, 0)) { return false; }//invalidLlh
+	if (pvt.lat > 900000000 || pvt.lat < -900000000 || pvt.lon > 1800000000 || pvt.lon < -1800000000) { return false; }
+	if (abs(pvt.lat) < nullIslandBox && abs(pvt.lon) < nullIslandBox) { return false; }
+	return true;
+}
+
+static bool isPositionJump( const NAV_PVT& pvt ) {
+	if (!hasLastGoodPVT || jumpRejects >= maxJumpRejects) { return false; }
+	int64_t dtMs = (int64_t)pvt.iTOW - lastGoodITOW;
+	if (dtMs < 0) { dtMs += msPerGpsWeek; }
+	double dLat = (double(pvt.lat) - lastGoodLat) * 0.0000001;
+	double dLon = (double(pvt.lon) - lastGoodLon) * 0.0000001;
+	if (dLon > 180) { dLon -= 360; }
+	else if (dLon < -180) { dLon += 360; }
+	dLon *= cos(lastGoodLat * 0.0000001 * PI180);
+	jumpDistance = hypot(dLat, dLon) * 111195.0;//m per degree
+	return jumpDistance > maxPlausibleSpeed * dtMs * 0.001 + jumpMargin;
+}
 
 void getSerialUBX( void* z ) {
 	bool checksumOk1 = false;
@@ -143,12 +180,34 @@ void getSerialUBX( void* z ) {
 									//Serial.print(UBXRelPosNED[UBXRingCount2].flags); Serial.print(",");
 								}
 
-								UBXRingCount1 = nextUBXcount1;
-								UBXLength1 = 100;
-								if (gpsConfig.debugmodeUBX) {
-									Serial.print("got UBX1 PVT lat: "); Serial.print(UBXPVT1[nextUBXcount1].lat);
-									Serial.print(" lon: "); Serial.println(UBXPVT1[nextUBXcount1].lon);
+								if (!isPositionValid(UBXPVT1[nextUBXcount1])) {
+									InvalidNavPvtCount++;
+									if (gpsConfig.debugmodeUBX) {
+										Serial.print("UBX1 PVT position invalid, checksum OK; sentence NOT used. fixType: "); Serial.print(UBXPVT1[nextUBXcount1].fixType);
+										Serial.print(" lat: "); Serial.print(UBXPVT1[nextUBXcount1].lat);
+										Serial.print(" lon: "); Serial.println(UBXPVT1[nextUBXcount1].lon);
+									}
 								}
+								else if (isPositionJump(UBXPVT1[nextUBXcount1])) {
+									JumpNavPvtCount++;
+									jumpRejects++;
+									if (gpsConfig.debugmodeUBX) {
+										Serial.print("UBX1 PVT position jump, checksum OK; sentence NOT used. distance (m): "); Serial.println(jumpDistance, 1);
+									}
+								}
+								else {
+									jumpRejects = 0;
+									lastGoodLat = UBXPVT1[nextUBXcount1].lat;
+									lastGoodLon = UBXPVT1[nextUBXcount1].lon;
+									lastGoodITOW = UBXPVT1[nextUBXcount1].iTOW;
+									hasLastGoodPVT = true;
+									UBXRingCount1 = nextUBXcount1;
+									if (gpsConfig.debugmodeUBX) {
+										Serial.print("got UBX1 PVT lat: "); Serial.print(UBXPVT1[nextUBXcount1].lat);
+										Serial.print(" lon: "); Serial.println(UBXPVT1[nextUBXcount1].lon);
+									}
+								}
+								UBXLength1 = 100;
 								previousNavPvtMillis = NavPvtMillis;
 								NavPvtMillis = millis();
 								NavPvtCount ++;
