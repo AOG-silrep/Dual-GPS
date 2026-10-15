@@ -100,20 +100,20 @@ void buildOGI() {
 	//always +48 to get ASCII: "0" = 48
 
 	// time stamp hhmmss
-	byte time = UBXPVT1[UBXRingCount1].hour;
+	byte time = epochPVT.hour;
 	OGIBuffer[OGIdigit++] = (time / 10) + 48;
 	time = time % 10;
 	OGIBuffer[OGIdigit++] = time + 48;
-	time = UBXPVT1[UBXRingCount1].min;
+	time = epochPVT.min;
 	OGIBuffer[OGIdigit++] = (time / 10) + 48;
 	time = time % 10;
 	OGIBuffer[OGIdigit++] = time + 48;
-	time = UBXPVT1[UBXRingCount1].sec;
+	time = epochPVT.sec;
 	OGIBuffer[OGIdigit++] = (time / 10) + 48;
 	time = time % 10;
 	OGIBuffer[OGIdigit++] = time + 48;
 	OGIBuffer[OGIdigit++] = 0x2E;//.
-	templng = UBXPVT1[UBXRingCount1].nano / 1000000;//ms
+	templng = epochPVT.nano / 1000000;//ms
 	OGIBuffer[OGIdigit++] = (templng / 100) + 48;
 	templng = templng % 100;
 	OGIBuffer[OGIdigit++] = (templng / 10) + 48;
@@ -122,7 +122,7 @@ void buildOGI() {
 
 	//lat: xx min min . min/10 .. 4.5 digits
 	if (filterGPSpos || virtAntPosPresent) { templng = lround(virtLat * 10000000); }
-	else { templng = UBXPVT1[UBXRingCount1].lat; }
+	else { templng = epochPVT.lat; }
 	if (gpsConfig.debugmodeRAW) { Serial.print("buildOGI tempLat temLon,"); Serial.print(templng); Serial.print(",");}
 	//N/S?
 	byte Sign = 0x53;//S
@@ -155,7 +155,7 @@ void buildOGI() {
 
 	//lon: xxx min min . min/10 .. 5.5 digits
 	if (filterGPSpos || virtAntPosPresent) { templng = lround(virtLon * 10000000); }
-	else { templng = UBXPVT1[UBXRingCount1].lon; }
+	else { templng = epochPVT.lon; }
 	if (gpsConfig.debugmodeRAW) { Serial.print(templng); Serial.print(","); }
 	//E/W?
 	if (templng < 0){Sign = 0x57;}//W
@@ -191,18 +191,18 @@ void buildOGI() {
 	//fix type
 	if (bGGAexists) { OGIBuffer[OGIdigit++] = cFixQualGGA; }// code by ai, 07.10.2020: use the GGA Message to determine Fix-Quality	
 	else {
-		if ((bitRead(UBXPVT1[UBXRingCount1].flags, 1) == true) && (UBXPVT1[UBXRingCount1].fixType == 3)) { OGIBuffer[OGIdigit++] = 52; }//4 = RTK
-		else { OGIBuffer[OGIdigit++] = UBXPVT1[UBXRingCount1].fixType + 48; }
+		if ((bitRead(epochPVT.flags, 1) == true) && (epochPVT.fixType == 3)) { OGIBuffer[OGIdigit++] = 52; }//4 = RTK
+		else { OGIBuffer[OGIdigit++] = epochPVT.fixType + 48; }
 	}
 	OGIBuffer[OGIdigit++] = 0x2C;//,
 
-	byte temp = UBXPVT1[UBXRingCount1].numSV;//number of satellites
+	byte temp = epochPVT.numSV;//number of satellites
 	OGIBuffer[OGIdigit++] = (temp / 10) + 48;
 	temp = temp % 10;
 	OGIBuffer[OGIdigit++] = temp + 48;
 	OGIBuffer[OGIdigit++] = 0x2C;//,
 
-	unsigned short pDOP = UBXPVT1[UBXRingCount1].pDOP;//Disolution of Position  might be wrong item and/or wrong scale
+	unsigned short pDOP = epochPVT.pDOP;//Disolution of Position  might be wrong item and/or wrong scale
 	OGIBuffer[OGIdigit++] = (pDOP / 100) + 48;
 	pDOP = pDOP % 100;
 	OGIBuffer[OGIdigit++] = 0x2E;//.
@@ -212,11 +212,11 @@ void buildOGI() {
 	OGIBuffer[OGIdigit++] = 0x2C;//,
 
 	//height main sea level mm
-	if (UBXPVT1[UBXRingCount1].hMSL < 0) {//below sea level, so write "-"
+	if (epochPVT.hMSL < 0) {//below sea level, so write "-"
 		OGIBuffer[OGIdigit++] = 0x2D;
-		templng = abs(UBXPVT1[UBXRingCount1].hMSL);
+		templng = abs(epochPVT.hMSL);
 	}
-	else templng = UBXPVT1[UBXRingCount1].hMSL;
+	else templng = epochPVT.hMSL;
 	OGIBuffer[OGIdigit++] = (templng / 1000000) + 48;
 	templng = templng % 1000000;
 	OGIBuffer[OGIdigit++] = (templng / 100000) + 48;
@@ -237,7 +237,7 @@ void buildOGI() {
 	//ground speed knots
 	if (drivDirect == 2) {//backwards, so write "-"
 		OGIBuffer[OGIdigit++] = 0x2D;}
-	if (UBXPVT1[UBXRingCount1].gSpeed > 30) { templng = (1.9438445 * UBXPVT1[UBXRingCount1].gSpeed); }
+	if (epochPVT.gSpeed > 30) { templng = (1.9438445 * epochPVT.gSpeed); }
 	else templng = 0;//send 0 if slower than 0,1km/h
 	OGIBuffer[OGIdigit++] = (templng / 10000) + 48;
 	templng = templng % 10000;
@@ -308,7 +308,6 @@ void buildOGI() {
 	OGIBuffer[OGIdigit++] = 0x0A;	
 	
 	
-	OGIfromUBX = UBXRingCount1;
 	newOGI = true;
 }
 
@@ -381,20 +380,20 @@ void buildGGA() {
 	//always +48 to get ASCII: "0" = 48
 
 	// time stamp hhmmss
-	byte time = UBXPVT1[UBXRingCount1].hour;
+	byte time = epochPVT.hour;
 	GGABuffer[GGAdigit++] = (time / 10) + 48;
 	time = time % 10;
 	GGABuffer[GGAdigit++] = time + 48;
-	time = UBXPVT1[UBXRingCount1].min;
+	time = epochPVT.min;
 	GGABuffer[GGAdigit++] = (time / 10) + 48;
 	time = time % 10;
 	GGABuffer[GGAdigit++] = time + 48;
-	time = UBXPVT1[UBXRingCount1].sec;
+	time = epochPVT.sec;
 	GGABuffer[GGAdigit++] = (time / 10) + 48;
 	time = time % 10;
 	GGABuffer[GGAdigit++] = time + 48;
 	GGABuffer[GGAdigit++] = 0x2E;//.
-	long timel = UBXPVT1[UBXRingCount1].nano / 1000000;//ms
+	long timel = epochPVT.nano / 1000000;//ms
 	GGABuffer[GGAdigit++] = (timel / 100) + 48;
 	timel = timel % 100;
 	GGABuffer[GGAdigit++] = (timel / 10) + 48;
@@ -402,7 +401,7 @@ void buildGGA() {
 	GGABuffer[GGAdigit++] = 0x2C;//,
 
 	//lat: xx min min . min/10 .. 4.5 digits
-	long Lat = UBXPVT1[UBXRingCount1].lat;
+	long Lat = epochPVT.lat;
 	//N/S?
 	byte Sign = 0x53;//S
 	if (Lat > 0) { Sign = 0x4E; }//N	
@@ -433,7 +432,7 @@ void buildGGA() {
 	GGABuffer[GGAdigit++] = 0x2C;//,
 
 	// lon: xxx min min . min/10 .. 5.5 digits
-	long Lon = UBXPVT1[UBXRingCount1].lon;
+	long Lon = epochPVT.lon;
 	//E/W?
 	if (Lon < 0) { Sign = 0x57; }//W
 	else { Sign = 0x45; }//E
@@ -468,18 +467,18 @@ void buildGGA() {
 	//fix type
 	if (bGGAexists) { GGABuffer[GGAdigit++] = cFixQualGGA; }// code by ai, 07.10.2020: use the GGA Message to determine Fix-Quality	
 	else {
-		if ((bitRead(UBXPVT1[UBXRingCount1].flags, 1) == true) && (UBXPVT1[UBXRingCount1].fixType == 3)) { GGABuffer[GGAdigit++] = 52; }//4 = RTK
-		else { GGABuffer[GGAdigit++] = UBXPVT1[UBXRingCount1].fixType + 48; }
+		if ((bitRead(epochPVT.flags, 1) == true) && (epochPVT.fixType == 3)) { GGABuffer[GGAdigit++] = 52; }//4 = RTK
+		else { GGABuffer[GGAdigit++] = epochPVT.fixType + 48; }
 	}
 	GGABuffer[GGAdigit++] = 0x2C;//,
 
-	byte temp = UBXPVT1[UBXRingCount1].numSV;//number of satellites
+	byte temp = epochPVT.numSV;//number of satellites
 	GGABuffer[GGAdigit++] = (temp / 10) + 48;
 	temp = temp % 10;
 	GGABuffer[GGAdigit++] = temp + 48;
 	GGABuffer[GGAdigit++] = 0x2C;//,
 
-	unsigned short pDOP = UBXPVT1[UBXRingCount1].pDOP;//Disolution of Position  might be wrong item and/or wrong scale
+	unsigned short pDOP = epochPVT.pDOP;//Disolution of Position  might be wrong item and/or wrong scale
 	GGABuffer[GGAdigit++] = (pDOP / 100) + 48;
 	pDOP = pDOP % 100;
 	GGABuffer[GGAdigit++] = 0x2E;//.
@@ -488,7 +487,7 @@ void buildGGA() {
 	GGABuffer[GGAdigit++] = pDOP + 48;
 	GGABuffer[GGAdigit++] = 0x2C;//,
 
-	long templng = UBXPVT1[UBXRingCount1].hMSL;//height main sea level mm
+	long templng = epochPVT.hMSL;//height main sea level mm
 	GGABuffer[GGAdigit++] = (templng / 1000000) + 48;
 	templng = templng % 1000000;
 	GGABuffer[GGAdigit++] = (templng / 100000) + 48;
@@ -588,7 +587,7 @@ void buildVTG() {
 		VTGBuffer[VTGdigit++] = 0x2D;
 	}
 	long speed1000Knotes;
-	if (UBXPVT1[UBXRingCount1].gSpeed > 30) { speed1000Knotes = (1.9438445 * UBXPVT1[UBXRingCount1].gSpeed); }
+	if (epochPVT.gSpeed > 30) { speed1000Knotes = (1.9438445 * epochPVT.gSpeed); }
 	else speed1000Knotes = 0;//send 0 if slower than 0,1km/h
 	VTGBuffer[VTGdigit++] = (speed1000Knotes / 10000) + 48;
 	speed1000Knotes = speed1000Knotes % 10000;
@@ -605,7 +604,7 @@ void buildVTG() {
 	VTGBuffer[VTGdigit++] = 0x2C;//,
 
 	//ground speed km/h
-	long speed1000kmh = (3.6 * UBXPVT1[UBXRingCount1].gSpeed);
+	long speed1000kmh = (3.6 * epochPVT.gSpeed);
 	VTGBuffer[VTGdigit++] = (speed1000kmh / 10000) + 48;
 	speed1000kmh = speed1000kmh % 10000;
 	VTGBuffer[VTGdigit++] = (speed1000kmh / 1000) + 48;
@@ -662,20 +661,20 @@ void buildRMC() {
 
 	// always +48 to get ASCII: "0" = 48
 	// time stamp hhmmss
-	byte time = UBXPVT1[UBXRingCount1].hour;
+	byte time = epochPVT.hour;
 	RMCBuffer[RMCdigit++] = (time / 10) + 48;
 	time = time % 10;
 	RMCBuffer[RMCdigit++] = time + 48;
-	time = UBXPVT1[UBXRingCount1].min;
+	time = epochPVT.min;
 	RMCBuffer[RMCdigit++] = (time / 10) + 48;
 	time = time % 10;
 	RMCBuffer[RMCdigit++] = time + 48;
-	time = UBXPVT1[UBXRingCount1].sec;
+	time = epochPVT.sec;
 	RMCBuffer[RMCdigit++] = (time / 10) + 48;
 	time = time % 10;
 	RMCBuffer[RMCdigit++] = time + 48;
 	RMCBuffer[RMCdigit++] = 0x2E;//.
-	long timel = UBXPVT1[UBXRingCount1].nano / 1000000;//ms
+	long timel = epochPVT.nano / 1000000;//ms
 	RMCBuffer[RMCdigit++] = (timel / 100) + 48;
 	timel = timel % 100;
 	RMCBuffer[RMCdigit++] = (timel / 10) + 48;
@@ -688,7 +687,7 @@ void buildRMC() {
 	RMCBuffer[RMCdigit++] = 0x2C;//,
 
 	//lat: xx min min . min/10 .. 4.5 digits
-	long Lat = UBXPVT1[UBXRingCount1].lat;
+	long Lat = epochPVT.lat;
 	//N/S?	
 	byte Sign = 0x53;//S
 	if (Lat > 0) { Sign = 0x4E; }//N
@@ -719,7 +718,7 @@ void buildRMC() {
 	RMCBuffer[RMCdigit++] = 0x2C;//,
 
 	//lon: xxx min min . min/10 .. 5.5 digits
-	long Lon = UBXPVT1[UBXRingCount1].lon;
+	long Lon = epochPVT.lon;
 	//E/W?
 	if (Lon < 0) { Sign = 0x57; }//W
 	else { Sign = 0x45; }//E
@@ -756,7 +755,7 @@ void buildRMC() {
 		RMCBuffer[RMCdigit++] = 0x2D;
 	}
 	long speed1000Knotes;
-	if (UBXPVT1[UBXRingCount1].gSpeed > 30) { speed1000Knotes = (1.9438445 * UBXPVT1[UBXRingCount1].gSpeed); }
+	if (epochPVT.gSpeed > 30) { speed1000Knotes = (1.9438445 * epochPVT.gSpeed); }
 	else speed1000Knotes = 0;//send 0 if slower than 0,1km/h
 	RMCBuffer[RMCdigit++] = (speed1000Knotes / 10000) + 48;
 	speed1000Knotes = speed1000Knotes % 10000;
@@ -788,15 +787,15 @@ void buildRMC() {
 	RMCBuffer[RMCdigit++] = 0x2C;//,
 
 	//Date
-	uint8_t date = UBXPVT1[UBXRingCount1].day;
+	uint8_t date = epochPVT.day;
 	RMCBuffer[RMCdigit++] = ( date / 10 ) + 48;
 	date = date % 10;
 	RMCBuffer[RMCdigit++] = date + 48;
-	date = UBXPVT1[UBXRingCount1].month;
+	date = epochPVT.month;
 	RMCBuffer[RMCdigit++] = ( date / 10 ) + 48;
 	date = date % 10;
 	RMCBuffer[RMCdigit++] = date + 48;
-	date = UBXPVT1[UBXRingCount1].year % 100;
+	date = epochPVT.year % 100;
 	RMCBuffer[RMCdigit++] = ( date / 10 ) + 48;
 	date = date % 10;
 	RMCBuffer[RMCdigit++] = date + 48;

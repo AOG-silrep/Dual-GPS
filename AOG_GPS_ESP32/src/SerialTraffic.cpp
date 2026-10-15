@@ -20,7 +20,6 @@ constexpr int32_t nullIslandBox = 10000000;     //1° around 0,0 is open ocean, 
 constexpr double maxPlausibleSpeed = 30.0;      //m/s ( ~108 km/h )
 constexpr double jumpMargin = 10.0;             //m, room for fix type changes
 constexpr uint8_t maxJumpRejects = 10;          //after this many jumps in a row accept the new position
-constexpr uint32_t msPerGpsWeek = 604800000;    //iTOW wraps weekly
 
 static bool hasLastGoodPVT = false;
 static int32_t lastGoodLat = 0, lastGoodLon = 0;

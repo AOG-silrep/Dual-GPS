@@ -106,7 +106,15 @@ void diagnosticDisplay ( void* z ){
       str = "DC power good: running";
     }
     str += "\nGPS: ";
-    str += existsUBXRelPosNED ? "Dual" : "Single" ;
+    if( !existsUBXRelPosNED ){
+      str += "Single";
+    } else if( relPosNedFresh ){
+      str += "Dual";
+    } else {
+      str += "Dual, heading stale (RelPosNED ";
+      str += relPosNedAgeMs;
+      str += " ms old)";
+    }
     str += "\nAntenna dist. deviation: ";
     str += antDistDeviation;
     str += "\nNAV-PVT to RelPosNED: ";

@@ -98,6 +98,8 @@ extern double HeadingDiff, HeadingMax, HeadingMin, HeadingMixBak, HeadingQualFac
 extern uint8_t noRollCount,  drivDirect;
 constexpr double PI180 = PI / 180;
 extern bool dualGPSHeadingPresent, rollPresent, virtAntPosPresent, add360ToRelPosNED, add360ToVTG;
+extern bool relPosNedFresh;//RelPosNED iTOW within 2 epochs of the NAV-PVT iTOW
+extern int32_t relPosNedAgeMs;//NAV-PVT iTOW - RelPosNED iTOW
 extern double roll, rollToAOG;
 extern uint8_t dualAntNoValueCount, dualAntNoValueMax;
 extern int16_t antDistDeviation;
@@ -153,6 +155,8 @@ constexpr uint16_t navPvtPayloadLength = 92;
 static_assert( offsetof( NAV_PVT, CK1 ) + 1 == navPvtPayloadLength + 6, "NAV_PVT does not match the NAV-PVT payload" );//+cls, id, 2xlength, 2xchecksum
 constexpr uint8_t sizeOfUBXArray = 3;
 extern NAV_PVT UBXPVT1[sizeOfUBXArray];
+extern NAV_PVT epochPVT;//the NAV-PVT being processed, copied once from UBXPVT1; heading, position and NMEA all use it
+constexpr uint32_t msPerGpsWeek = 604800000;//iTOW wraps weekly
 
 //NMEA
 constexpr uint8_t sizeOfOGIBuffer = 96, sizeOfHDTBuffer = 24, sizeOfVTGBuffer = 55, sizeOfGGABuffer = 80, sizeOfRMCBuffer = 80;
