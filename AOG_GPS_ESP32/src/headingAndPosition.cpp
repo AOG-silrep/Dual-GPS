@@ -66,7 +66,7 @@ uint32_t OutputCount;
 double HeadingRelPosNED = 0, cosHeadRelPosNED = 1, HeadingVTG = 0, HeadingVTGOld = 0, cosHeadVTG = 1, HeadingMix = 0, cosHeadMix = 1;
 double HeadingDiff = 0, HeadingMax = 0, HeadingMin = 0, HeadingMixBak = 0, HeadingQualFactor = 0.5;
 uint8_t noRollCount = 0,  drivDirect = 0;
-bool dualGPSHeadingPresent = false, rollPresent = false, virtAntPosPresent = false, add360ToRelPosNED = false, add360ToVTG = false;
+bool dualGPSHeadingPresent = false, rollPresent = false, virtAntPosPresent = false;
 bool relPosNedFresh = false;
 int32_t relPosNedAgeMs = 0;
 double roll = 0.0, rollToAOG = 0.0;
@@ -106,6 +106,21 @@ static int32_t iTOWDiff( uint32_t later, uint32_t earlier ){
 	return diff;
 }
 
+//angle in [0, 360)
+static double wrap360( double angle ){
+	angle = fmod( angle, 360.0 );
+	if( angle < 0 ){ angle += 360.0; }
+	if( angle >= 360.0 ){ angle = 0.0; }//a tiny negative angle rounds up to 360 above
+	return angle;
+}
+
+//shortest signed turn from 'from' to 'to', in (-180, 180]
+static double angleDiff( double to, double from ){
+	double diff = wrap360( to - from );
+	if( diff > 180.0 ){ diff -= 360.0; }
+	return diff;
+}
+
 void headingRollCalc( uint8_t ringCount1 ){
 	//copy once, the serial tasks can advance UBXRingCount1/2 while this runs
 	epochPVT = UBXPVT1[ringCount1];
@@ -114,12 +129,11 @@ void headingRollCalc( uint8_t ringCount1 ){
 	//the rate is set on the F9P, so measure the epoch
 	const int32_t pvtIntervalMs = iTOWDiff( epochPVT.iTOW, prevPvtITOW );
 	bool dualHeadingNew = false;//heading + roll calculated from this epoch's RelPosNED
+	const double headingCorrection = wrap360( gpsConfig.headingAngleCorrection );//450 works like 90
 
 	rollPresent = false;
 	dualGPSHeadingPresent = false;
 	filterGPSpos = false;
-	add360ToRelPosNED = false;
-	add360ToVTG = false;
 
 	if( existsUBXRelPosNED ){
 		//pair by iTOW: RelPosNED comes up to 1 epoch after its NAV-PVT
@@ -169,8 +183,8 @@ void headingRollCalc( uint8_t ringCount1 ){
 					headVTGVarProcess = VarProcessSlow; //set Kalman filter
 				}
 
-				if((( gpsConfig.headingAngleCorrection > 70 ) && ( gpsConfig.headingAngleCorrection < 110 ))
-					|| (( gpsConfig.headingAngleCorrection > 250 ) && ( gpsConfig.headingAngleCorrection < 290 )))
+				if((( headingCorrection > 70 ) && ( headingCorrection < 110 ))
+					|| (( headingCorrection > 250 ) && ( headingCorrection < 290 )))
 				{//ant left+right: headingCorrectionAngle 90 or 270
 		//roll		
 					if((( epochPVT.gSpeed > 3000 ) && ( abs( relPosNed.relPosD ) < ( gpsConfig.AntDist * 3 )))
@@ -227,8 +241,8 @@ void headingRollCalc( uint8_t ringCount1 ){
 				}
 			}//end of deviation good or perfect					
 		//heading
-			HeadingRelPosNED = ( double( relPosNed.relPosHeading ) * 0.00001 ) + gpsConfig.headingAngleCorrection;
-			if( HeadingRelPosNED >= 360 ){ HeadingRelPosNED -= 360; }
+			//in [0, 360) for the half-plane pick after the filter
+			HeadingRelPosNED = wrap360(( double( relPosNed.relPosHeading ) * 0.00001 ) + headingCorrection );
 			//go to cos for filtering to avoid 360-0° jump
 			cosHeadRelPosNED = cos(( HeadingRelPosNED * PI180 ));
 			if( gpsConfig.debugmodeRAW ){
@@ -392,18 +406,8 @@ void headingRollCalc( uint8_t ringCount1 ){
 	if( dualHeadingNew ){
 		if( epochPVT.gSpeed > 100 ){//driving at least 0.36 km/h
 			drivDirect = 2;     //set to backwards
-			if( abs( HeadingRelPosNED - HeadingVTG ) <= 60 ){  //40 330 20         // almost same direction = forewards
+			if( abs( angleDiff( HeadingRelPosNED, HeadingVTG )) <= 60 ){  // almost same direction = forewards, also across 360
 				drivDirect = 1;
-			}
-			else {
-				if(( HeadingRelPosNED > 305 ) && ( HeadingVTG < 55 )){
-					drivDirect = 1;
-					add360ToVTG = true;
-				}
-				if(( HeadingRelPosNED < 55 ) && ( HeadingVTG > 305 )){
-					drivDirect = 1;
-					add360ToRelPosNED = true;
-				}
 			}
 		}
 		else { //too slow
@@ -449,37 +453,18 @@ void headingRollCalc( uint8_t ringCount1 ){
 
 	if( dualGPSHeadingPresent ){
 		if( drivDirect < 2 ){//calc HeadingMix with VTG and RelPosNED heading
-			if(( abs( HeadingRelPosNED - HeadingVTG )) <= 20 ){
-				HeadingMix = (( HeadingRelPosNED * ( 1.0 - HeadingQuotaVTG )) + ( HeadingVTG * HeadingQuotaVTG ));
+			const double vtgOffset = angleDiff( HeadingVTG, HeadingRelPosNED );
+			if( abs( vtgOffset ) <= 20 ){
+				HeadingMix = HeadingRelPosNED + ( vtgOffset * HeadingQuotaVTG );//may leave 0-360, wrapped below
 			}
-			else {
-				if( add360ToVTG ){
-					HeadingMix = (( HeadingRelPosNED * ( 1.0 - HeadingQuotaVTG )) + (( HeadingVTG + 360 ) * HeadingQuotaVTG ));
-				}
-				else if( add360ToRelPosNED ){
-					HeadingMix = ((( HeadingRelPosNED + 360 ) * ( 1.0 - HeadingQuotaVTG )) + ( HeadingVTG * HeadingQuotaVTG ));
-				}
-				else{ HeadingMix = HeadingRelPosNED; } //when GPS is above steer axle
-			}
-			if( HeadingMix > 360 ){
-				HeadingMix -= 360;
-			}
+			else{ HeadingMix = HeadingRelPosNED; } //when GPS is above steer axle
 		}
 		else { HeadingMix = HeadingRelPosNED; }//backwards
 	}
 	else { HeadingMix = HeadingVTG; }//single Antenna, or dual heading lost
 
-	if( abs( HeadingMixBak - HeadingMix ) <= 20 ){   // use old and new HeadingMix values 
-		HeadingMix = ( HeadingMixBak * ( double( 1 ) - HeadingQualFactor )) + ( HeadingMix * HeadingQualFactor );
-	}
-	else {
-		if(( HeadingMixBak > 340 ) && ( HeadingMix < 20 )){HeadingMix += 360;	}
-		if(( HeadingMixBak < 20 ) && ( HeadingMix > 340 )){HeadingMixBak += 360;}
-
-		HeadingMix = (( HeadingMixBak * ( double( 1 ) - HeadingQualFactor )) + ( HeadingMix * HeadingQualFactor ));
-
-		if( HeadingMix > 360 ){	HeadingMix -= 360;}
-	}
+	//use old and new HeadingMix values, along the shorter way round
+	HeadingMix = wrap360( HeadingMixBak + ( angleDiff( HeadingMix, HeadingMixBak ) * HeadingQualFactor ));
 
 
 	if( gpsConfig.debugmodeRAW ){

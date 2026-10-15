@@ -97,7 +97,7 @@ extern double HeadingRelPosNED, cosHeadRelPosNED, HeadingVTG, HeadingVTGOld, cos
 extern double HeadingDiff, HeadingMax, HeadingMin, HeadingMixBak, HeadingQualFactor;
 extern uint8_t noRollCount,  drivDirect;
 constexpr double PI180 = PI / 180;
-extern bool dualGPSHeadingPresent, rollPresent, virtAntPosPresent, add360ToRelPosNED, add360ToVTG;
+extern bool dualGPSHeadingPresent, rollPresent, virtAntPosPresent;
 extern bool relPosNedFresh;//RelPosNED iTOW within 2 epochs of the NAV-PVT iTOW
 extern int32_t relPosNedAgeMs;//NAV-PVT iTOW - RelPosNED iTOW
 extern double roll, rollToAOG;
