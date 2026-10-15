@@ -121,7 +121,7 @@ void buildOGI() {
 	OGIBuffer[OGIdigit++] = 0x2C;//,
 
 	//lat: xx min min . min/10 .. 4.5 digits
-	if (filterGPSpos || virtAntPosPresent) { templng = long(virtLat * 10000000); }
+	if (filterGPSpos || virtAntPosPresent) { templng = lround(virtLat * 10000000); }
 	else { templng = UBXPVT1[UBXRingCount1].lat; }
 	if (gpsConfig.debugmodeRAW) { Serial.print("buildOGI tempLat temLon,"); Serial.print(templng); Serial.print(",");}
 	//N/S?
@@ -132,7 +132,7 @@ void buildOGI() {
 	templng = templng % 100000000;
 	OGIBuffer[OGIdigit++] = (templng / 10000000) + 48;
 	templng = templng % 10000000;
-	templng = templng * 0.6;//dec to min
+	templng = (templng * 6 + 5) / 10;//dec to min, rounded
 	OGIBuffer[OGIdigit++] = (templng / 1000000) + 48;
 	templng = templng % 1000000;
 	OGIBuffer[OGIdigit++] = (templng / 100000) + 48;
@@ -154,7 +154,7 @@ void buildOGI() {
 	OGIBuffer[OGIdigit++] = 0x2C;//,
 
 	//lon: xxx min min . min/10 .. 5.5 digits
-	if (filterGPSpos || virtAntPosPresent) { templng = long(virtLon * 10000000); }
+	if (filterGPSpos || virtAntPosPresent) { templng = lround(virtLon * 10000000); }
 	else { templng = UBXPVT1[UBXRingCount1].lon; }
 	if (gpsConfig.debugmodeRAW) { Serial.print(templng); Serial.print(","); }
 	//E/W?
@@ -167,7 +167,7 @@ void buildOGI() {
 	templng = templng % 100000000;
 	OGIBuffer[OGIdigit++] = (templng / 10000000) + 48;
 	templng = templng % 10000000;
-	templng = templng * 0.6;//dec to min
+	templng = (templng * 6 + 5) / 10;//dec to min, rounded
 	OGIBuffer[OGIdigit++] = (templng / 1000000) + 48;
 	templng = templng % 1000000;
 	OGIBuffer[OGIdigit++] = (templng / 100000) + 48;
@@ -411,7 +411,7 @@ void buildGGA() {
 	Lat = Lat % 100000000;
 	GGABuffer[GGAdigit++] = (Lat / 10000000) + 48;
 	Lat = Lat % 10000000;
-	Lat = Lat * 0.6;//dec to min
+	Lat = (Lat * 6 + 5) / 10;//dec to min, rounded
 	GGABuffer[GGAdigit++] = (Lat / 1000000) + 48;
 	Lat = Lat % 1000000;
 	GGABuffer[GGAdigit++] = (Lat / 100000) + 48;
@@ -444,7 +444,7 @@ void buildGGA() {
 	Lon = Lon % 100000000;
 	GGABuffer[GGAdigit++] = (Lon / 10000000) + 48;
 	Lon = Lon % 10000000;
-	Lon = Lon * 0.6;//dec to min
+	Lon = (Lon * 6 + 5) / 10;//dec to min, rounded
 	GGABuffer[GGAdigit++] = (Lon / 1000000) + 48;
 	Lon = Lon % 1000000;
 	GGABuffer[GGAdigit++] = (Lon / 100000) + 48;
@@ -697,7 +697,7 @@ void buildRMC() {
 	Lat = Lat % 100000000;
 	RMCBuffer[RMCdigit++] = (Lat / 10000000) + 48;
 	Lat = Lat % 10000000;
-	Lat = Lat * 0.6;//dec to min
+	Lat = (Lat * 6 + 5) / 10;//dec to min, rounded
 	RMCBuffer[RMCdigit++] = (Lat / 1000000) + 48;
 	Lat = Lat % 1000000;
 	RMCBuffer[RMCdigit++] = (Lat / 100000) + 48;
@@ -730,7 +730,7 @@ void buildRMC() {
 	Lon = Lon % 100000000;
 	RMCBuffer[RMCdigit++] = (Lon / 10000000) + 48;
 	Lon = Lon % 10000000;
-	Lon = Lon * 0.6;//dec to min
+	Lon = (Lon * 6 + 5) / 10;//dec to min, rounded
 	RMCBuffer[RMCdigit++] = (Lon / 1000000) + 48;
 	Lon = Lon % 1000000;
 	RMCBuffer[RMCdigit++] = (Lon / 100000) + 48;
