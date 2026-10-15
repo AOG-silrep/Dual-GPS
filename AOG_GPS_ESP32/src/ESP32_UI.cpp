@@ -12,7 +12,8 @@ uint16_t labelAgOpenGpsAddress;
 uint16_t labelGpsReceivers;
 uint16_t labelGpsMessages;
 uint16_t labelPwmOut;
-uint16_t labelGpsMessageHz;
+uint16_t labelNavPvt;
+uint16_t labelRelPosNed;
 uint16_t buttonReset;
 char downloadFilename[50];
 
@@ -22,6 +23,10 @@ void setResetButtonToRed() {
 }
 
 void initESPUI ( void ) {
+
+  //an update that does not fit is split, and each fragment is read from the control's current value,
+  //so a label that changed in between arrives garbled; ESPUI estimates 3 bytes per character
+  ESPUI.jsonUpdateDocumentSize = 8000;
 
   labelLoad = ESPUI.addControl( ControlType::Label, "Load", "", ControlColor::Turquoise );
   labelHeading = ESPUI.addControl( ControlType::Label, "Heading values", "", ControlColor::Sunflower );
@@ -54,13 +59,17 @@ void initESPUI ( void ) {
 
     labelAgOpenGpsAddress = ESPUI.addControl( ControlType::Label, "AgOpenGPS Address", "N/A", ControlColor::Turquoise, tab );
     labelGpsReceivers = ESPUI.addControl( ControlType::Label, "GPS receivers", "", ControlColor::Turquoise, tab );
+    labelNavPvt = ESPUI.addControl( ControlType::Label, "NAV-PVT (position receiver)", "", ControlColor::Turquoise, tab );
+    labelRelPosNed = ESPUI.addControl( ControlType::Label, "RelPosNED (heading receiver)", "", ControlColor::Turquoise, tab );
     labelGpsMessages = ESPUI.addControl( ControlType::Label, "RS-232 messages", "", ControlColor::Turquoise, tab );
     labelPwmOut = ESPUI.addControl( ControlType::Label, "Speed output", "", ControlColor::Turquoise, tab );
-    labelGpsMessageHz = ESPUI.addControl( ControlType::Label, "GPS message info", "", ControlColor::Turquoise, tab );
     ESPUI.addControl( ControlType::Button, "Diagnostics:", "Reset all", ControlColor::Emerald, tab, []( Control * control, int id ) {
       if( id == B_UP ) {
         NavPvtCount = 0;
         RelPosNedCount = 0;
+        InvalidNavPvtCount = 0;
+        JumpNavPvtCount = 0;
+        HeadingInvalidRelPosNedCount = 0;
         gpsHzMaxMillis = gpsHzCurrentMillis;
         gpsHzMinMillis = gpsHzCurrentMillis;
         diagnostics.badChecksumNavPVTCount = 0;

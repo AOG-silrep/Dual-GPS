@@ -25,13 +25,15 @@ extern uint16_t labelAgOpenGpsAddress;
 extern uint16_t labelGpsReceivers;
 extern uint16_t labelGpsMessages;
 extern uint16_t labelPwmOut;
-extern uint16_t labelGpsMessageHz;
+extern uint16_t labelNavPvt;
+extern uint16_t labelRelPosNed;
 
 extern uint64_t RelPosNedCount;
 extern time_t RelPosNedMillis;
 extern uint64_t NavPvtCount;
 extern uint32_t InvalidNavPvtCount;//RAM only, not saved: can count at GPS rate while there is no fix
 extern uint32_t JumpNavPvtCount;
+extern uint32_t HeadingInvalidRelPosNedCount;//RAM only, like InvalidNavPvtCount
 extern time_t NavPvtMillis;
 extern time_t previousRelPosNedMillis;
 extern time_t previousNavPvtMillis;
@@ -105,6 +107,7 @@ extern time_t powerUnstableMillis;
 extern time_t gpsHzMaxMillis;
 extern time_t gpsHzMinMillis;
 extern time_t gpsHzCurrentMillis;
+extern uint32_t OutputCount;
 
 struct NAV_PVT {
     uint8_t cls;

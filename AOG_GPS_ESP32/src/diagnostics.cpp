@@ -1,14 +1,88 @@
 
 #include "main.hpp"
 
+//messages per second over the last display period, in tenths
+static uint32_t hzTenths( uint64_t count, uint64_t& previousCount, time_t elapsedMillis ) {
+  uint64_t delta = count >= previousCount ? count - previousCount : count;//"Reset all" zeroes the counts
+  previousCount = count;
+  return elapsedMillis > 0 ? delta * 10000 / elapsedMillis : 0;
+}
+
+static void addHz( String& str, uint32_t tenths ) {
+  str += tenths / 10;
+  str += '.';
+  str += tenths % 10;
+  str += " Hz";
+}
+
+//the label keeps white-space, so the table must not contain newlines
+static void addRowName( String& str, const char* name ) {
+  str += "<tr><td>";
+  str += name;
+  str += "</td><td align=right>";
+}
+
+template<typename T>
+static void addRow( String& str, const char* name, T value ) {
+  addRowName( str, name );
+  str += value;
+  str += "</td></tr>";
+}
+
+static void addRateRow( String& str, uint32_t tenths ) {
+  addRowName( str, "Rate" );
+  addHz( str, tenths );
+  str += "</td></tr>";
+}
+
+//time between the last two messages, or how long none arrived; returns true when none arrived for over 1s
+static bool addIntervalRow( String& str, time_t lastMillis, time_t previousMillis ) {
+  addRowName( str, "Interval" );
+  time_t elapsedMillis = millis() - lastMillis;
+  bool stale = lastMillis == 0 or elapsedMillis > 1000;
+  if( lastMillis == 0 ){
+    str += "none received";
+  } else if( stale ){
+    str += "none for ";
+    str += elapsedMillis / 1000;
+    str += " s";
+  } else {
+    str += lastMillis - previousMillis;
+    str += " ms";
+  }
+  str += "</td></tr>";
+  return stale;
+}
+
+static void updateLabel( uint16_t label, const String& str, bool alarm ) {
+  Control* labelHandle = ESPUI.getControl( label );
+  labelHandle->color = alarm ? ControlColor::Alizarin : ControlColor::Turquoise;
+  labelHandle->value = str;
+  ESPUI.updateControl( labelHandle );
+}
+
 void diagnosticDisplay ( void* z ){
   constexpr TickType_t xFrequency = 1000;
   TickType_t xLastWakeTime = xTaskGetTickCount();
 
   String str;
-  str.reserve( 500 );
+  str.reserve( 1000 );
+
+  time_t previousDisplayMillis = millis();
+  uint64_t previousNavPvtCount = NavPvtCount;
+  uint64_t previousRelPosNedCount = RelPosNedCount;
+  uint64_t previousOutputCount = OutputCount;
 
   for( ;; ) {
+    //wait first, so the first rates are over a whole period
+    vTaskDelayUntil( &xLastWakeTime, xFrequency );
+
+    time_t displayMillis = millis();
+    time_t elapsedDisplayMillis = displayMillis - previousDisplayMillis;
+    previousDisplayMillis = displayMillis;
+    uint32_t navPvtHzTenths = hzTenths( NavPvtCount, previousNavPvtCount, elapsedDisplayMillis );
+    uint32_t relPosNedHzTenths = hzTenths( RelPosNedCount, previousRelPosNedCount, elapsedDisplayMillis );
+    uint32_t outputHzTenths = hzTenths( OutputCount, previousOutputCount, elapsedDisplayMillis );
 
     str = "Heading from Dual GPS: ";
     str += HeadingRelPosNED;
@@ -35,44 +109,48 @@ void diagnosticDisplay ( void* z ){
     str += existsUBXRelPosNED ? "Dual" : "Single" ;
     str += "\nAntenna dist. deviation: ";
     str += antDistDeviation;
-    str += "\nNAV-PVT message received: ";
-    time_t elapsedNavPvtMillis = millis() - NavPvtMillis;
-    if( elapsedNavPvtMillis > 1000 ){
-      str += ( elapsedNavPvtMillis / 1000 );
-      str += " seconds ago";
-    } else {
-      str += NavPvtMillis - previousNavPvtMillis;
-      str += " millis apart";
-    }
-    str += "\nRelPosNED message received: ";
-    time_t elapsedRelPosNedMillis = millis() - RelPosNedMillis;
-    if( elapsedRelPosNedMillis > 1000 ){
-      str += ( elapsedRelPosNedMillis / 1000 );
-      str += " seconds ago";
-    } else {
-      str += RelPosNedMillis - previousRelPosNedMillis;
-      str += " millis apart";
-    }
-    str += "\nNAV-PVT to RelPosNED difference: ";
+    str += "\nNAV-PVT to RelPosNED: ";
     str += NavPvtMillis - RelPosNedMillis;
-    str += " millis apart";
+    str += " ms apart";
     str += "\nGGA: ";
     if( GGAReceivedMillis == 0 ){
       str += "none received";
     } else {
       time_t ggaInterval = ( time_t )GGATimestampMillis - ( time_t )previousGGATimestampMillis;
       str += ggaInterval;
-      str += " millisecond fix-to-fix";
+      str += " ms fix-to-fix";
     }
+    str += "\nOutput to AOG: ";
+    addHz( str, outputHzTenths );
+    str += "\nOutput interval: ";
+    str += gpsHzCurrentMillis;
+    str += " ms (min ";
+    str += gpsHzMinMillis;
+    str += ", max ";
+    str += gpsHzMaxMillis;
+    str += ")";
+    updateLabel( labelGpsReceivers, str, power == LOW or powerUnstable == true );
 
-    Control* labelGpsReceiversHandle = ESPUI.getControl( labelGpsReceivers );
-    if( power == LOW or powerUnstable == true or elapsedNavPvtMillis > 1000 or elapsedRelPosNedMillis > 1000 ){
-      labelGpsReceiversHandle->color = ControlColor::Alizarin;
-    } else {
-      labelGpsReceiversHandle->color = ControlColor::Turquoise;
-    }
-    labelGpsReceiversHandle->value = str;
-    ESPUI.updateControl( labelGpsReceiversHandle );
+    str = "<table style='width:100%;text-align:left'>";
+    addRateRow( str, navPvtHzTenths );
+    bool navPvtStale = addIntervalRow( str, NavPvtMillis, previousNavPvtMillis );
+    addRow( str, "Good checksum", NavPvtCount );
+    addRow( str, "Bad checksum", diagnostics.badChecksumNavPVTCount );
+    addRow( str, "Wrong length", diagnostics.wrongLengthNavPVTCount );
+    addRow( str, "Dropped: invalid position", InvalidNavPvtCount );
+    addRow( str, "Dropped: position jump", JumpNavPvtCount );
+    str += "</table>";
+    updateLabel( labelNavPvt, str, navPvtStale );
+
+    str = "<table style='width:100%;text-align:left'>";
+    addRateRow( str, relPosNedHzTenths );
+    bool relPosNedStale = addIntervalRow( str, RelPosNedMillis, previousRelPosNedMillis );
+    addRow( str, "Good checksum", RelPosNedCount );
+    addRow( str, "Bad checksum", diagnostics.badChecksumRelPosNEDCount );
+    addRow( str, "Wrong length/version", diagnostics.wrongLengthRelPosNEDCount );
+    addRow( str, "Dropped: heading not valid", HeadingInvalidRelPosNedCount );
+    str += "</table>";
+    updateLabel( labelRelPosNed, str, relPosNedStale );
 
     str = "Pwm: ";
     str += mphPwm;
@@ -82,33 +160,6 @@ void diagnosticDisplay ( void* z ){
     Control* labelPwmOutHandle = ESPUI.getControl( labelPwmOut );
     labelPwmOutHandle->value = str;
     ESPUI.updateControl( labelPwmOutHandle );
-
-    str = "Max millis: ";
-    str += gpsHzMaxMillis;
-    str += "\nMin millis: ";
-    str += gpsHzMinMillis;
-    str += "\nCurrent millis: ";
-    str += gpsHzCurrentMillis;
-    str += "\nNavPVT message count: ";
-    str += NavPvtCount;
-    str += "\nNavPVT bad checksum: ";
-    str += diagnostics.badChecksumNavPVTCount;
-    str += "\nNavPVT wrong length: ";
-    str += diagnostics.wrongLengthNavPVTCount;
-    str += "\nNavPVT invalid position: ";
-    str += InvalidNavPvtCount;
-    str += "\nNavPVT position jump: ";
-    str += JumpNavPvtCount;
-    str += "\nRelPosNED message count: ";
-    str += RelPosNedCount;
-    str += "\nRelPosNED bad checksum: ";
-    str += diagnostics.badChecksumRelPosNEDCount;
-    str += "\nRelPosNED wrong length: ";
-    str += diagnostics.wrongLengthRelPosNEDCount;
-
-    Control* labelGpsMessageHzHandle = ESPUI.getControl( labelGpsMessageHz );
-    labelGpsMessageHzHandle->value = str;
-    ESPUI.updateControl( labelGpsMessageHzHandle );
 
     {
       str = "";
@@ -153,8 +204,6 @@ void diagnosticDisplay ( void* z ){
       }
       ESPUI.updateControl( labelAgOpenGpsAddressHandle );
     }
-
-		vTaskDelayUntil( &xLastWakeTime, xFrequency );
   }
 }
 

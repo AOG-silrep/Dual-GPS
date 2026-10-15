@@ -60,6 +60,7 @@ time_t previousMillisHz;
 time_t gpsHzMaxMillis;
 time_t gpsHzMinMillis;
 time_t gpsHzCurrentMillis;
+uint32_t OutputCount;
 
 //heading + roll
 double HeadingRelPosNED = 0, cosHeadRelPosNED = 1, HeadingVTG = 0, HeadingVTGOld = 0, cosHeadVTG = 1, HeadingMix = 0, cosHeadMix = 1;
@@ -758,6 +759,7 @@ void headingAndPosition ( void* z ){
 			previousMillisHz = millis();
 			gpsHzMaxMillis = max( gpsHzCurrentMillis, gpsHzMaxMillis );
 			gpsHzMinMillis = min( gpsHzCurrentMillis, gpsHzMinMillis );
+			OutputCount++;
 		}
 		if( digitalRead( gpsConfig.gpioDcPowerGood ) == LOW ){
 				powerUnstableMillis = millis();

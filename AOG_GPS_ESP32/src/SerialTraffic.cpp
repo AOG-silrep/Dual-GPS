@@ -5,6 +5,7 @@
 uint64_t NavPvtCount;
 uint32_t InvalidNavPvtCount;
 uint32_t JumpNavPvtCount;
+uint32_t HeadingInvalidRelPosNedCount;
 time_t RelPosNedMillis;
 time_t NavPvtMillis;
 uint64_t RelPosNedCount;
@@ -363,7 +364,10 @@ void getSerial2UBX ( void* z ){
 											Serial.print(UBXRelPosNED[UBXRingCount2].flags); Serial.print(",");
 										}
 									}
-									else { if (gpsConfig.debugmodeUBX) { Serial.println("UBXRelPosNED flag heading: NOT valid, checksum OK; sentence NOT used"); } }
+									else {
+										HeadingInvalidRelPosNedCount++;
+										if (gpsConfig.debugmodeUBX) { Serial.println("UBXRelPosNED flag heading: NOT valid, checksum OK; sentence NOT used"); }
+									}
 								}
 								else {//don't check UBX flags, checksum ok
 									existsUBXRelPosNED = true;
