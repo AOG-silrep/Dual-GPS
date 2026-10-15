@@ -145,7 +145,16 @@ void getSerialUBX( void* z ) {
 				else
 				{
 					if (UBXDigit1 == 7) {//length
-						UBXLength1 = UBXPVT1[nextUBXcount1].len + 8;//+2xheader,2xclass,2xlength,2xchecksum
+						if (UBXPVT1[nextUBXcount1].len != navPvtPayloadLength) {
+							UBXDigit1 = 0;
+							UBXLength1 = 100;
+							if (gpsConfig.debugmodeUBX) { Serial.print("UBX1 PVT wrong length: "); Serial.println(UBXPVT1[nextUBXcount1].len); }
+							diagnostics.wrongLengthNavPVTCount += 1;
+							saveDiagnostics();
+						}
+						else {
+							UBXLength1 = UBXPVT1[nextUBXcount1].len + 8;//+2xheader,2xclass,2xlength,2xchecksum
+						}
 						//if (debugmode) { Serial.print("UBXLength1: "); Serial.println(UBXLength1); }
 					}
 					else
@@ -235,7 +244,8 @@ void getSerialUBX( void* z ) {
 							//Serial.print(UBXRelPosNED[UBXRingCount2].field); Serial.print(" ");
 							//Serial.print(UBXRelPosNED[UBXRingCount2].field); Serial.print(" ");
 							//Serial.println(" RelPosNED");
-							if (UBXDigit1 > (108)) {
+							//backstop, the length is checked at 7: the next byte goes to UBXDigit1 - 2, past the slot
+							if (UBXDigit1 >= sizeof(NAV_PVT) + 2) {
 								UBXDigit1 = 0;
 								UBXLength1 = 100;
 								diagnostics.wrongLengthNavPVTCount += 1;
@@ -302,8 +312,20 @@ void getSerial2UBX ( void* z ){
 				}//5
 				else
 				{
-					if (UBXDigit2 == 7) {//length
-						UBXLength2 = UBXRelPosNED[nextUBXcount2].len + 8;//+2xheader,2xclass,2xlength,2xchecksum
+					if (UBXDigit2 == 7) {//length, version is the byte just written
+						if (UBXRelPosNED[nextUBXcount2].len != relPosNedPayloadLength || UBXRelPosNED[nextUBXcount2].ver != relPosNedVersion) {
+							UBXDigit2 = 0;
+							UBXLength2 = 100;
+							if (gpsConfig.debugmodeUBX) {
+								Serial.print("UBX2 RelPosNED wrong length: "); Serial.print(UBXRelPosNED[nextUBXcount2].len);
+								Serial.print(" version: "); Serial.println(UBXRelPosNED[nextUBXcount2].ver);
+							}
+							diagnostics.wrongLengthRelPosNEDCount += 1;
+							saveDiagnostics();
+						}
+						else {
+							UBXLength2 = UBXRelPosNED[nextUBXcount2].len + 8;//+2xheader,2xclass,2xlength,2xchecksum
+						}
 						//if (debugmode) { Serial.print("UBXLength2: "); Serial.println(UBXLength2); }
 					}
 					else
@@ -374,7 +396,8 @@ void getSerial2UBX ( void* z ){
 						}//UBX complete
 						else
 						{//too long
-							if (UBXDigit2 > (108)) {
+							//backstop, the length is checked at 7: the next byte goes to UBXDigit2 - 2, past the slot
+							if (UBXDigit2 >= sizeof(NAV_RELPOSNED) + 2) {
 								UBXDigit2 = 0;
 								UBXLength2 = 100;
 								diagnostics.wrongLengthRelPosNEDCount += 1;

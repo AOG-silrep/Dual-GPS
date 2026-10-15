@@ -146,6 +146,8 @@ struct NAV_PVT {
     uint8_t CK0;
     uint8_t CK1;
 };
+constexpr uint16_t navPvtPayloadLength = 92;
+static_assert( offsetof( NAV_PVT, CK1 ) + 1 == navPvtPayloadLength + 6, "NAV_PVT does not match the NAV-PVT payload" );//+cls, id, 2xlength, 2xchecksum
 constexpr uint8_t sizeOfUBXArray = 3;
 extern NAV_PVT UBXPVT1[sizeOfUBXArray];
 
@@ -204,6 +206,9 @@ struct NAV_RELPOSNED {
     uint8_t CK0;
     uint8_t CK1;
 };
+constexpr uint16_t relPosNedPayloadLength = 64;
+constexpr uint8_t relPosNedVersion = 1;
+static_assert( offsetof( NAV_RELPOSNED, CK1 ) + 1 == relPosNedPayloadLength + 6, "NAV_RELPOSNED does not match the NAV-RELPOSNED v1 payload" );//+cls, id, 2xlength, 2xchecksum
 extern NAV_RELPOSNED UBXRelPosNED[sizeOfUBXArray];
 
 ///////////////////////////////////////////////////////////////////////////
