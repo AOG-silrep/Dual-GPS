@@ -34,6 +34,10 @@ extern uint64_t NavPvtCount;
 extern uint32_t InvalidNavPvtCount;//RAM only, not saved: can count at GPS rate while there is no fix
 extern uint32_t JumpNavPvtCount;
 extern uint32_t HeadingInvalidRelPosNedCount;//RAM only, like InvalidNavPvtCount
+extern uint32_t NotFixedRelPosNedCount;//RAM only, like InvalidNavPvtCount
+extern uint32_t ExtrapolatedRelPosNedCount;//RAM only, like InvalidNavPvtCount
+extern uint32_t HeadingRangeRelPosNedCount;//RAM only, like InvalidNavPvtCount
+extern uint32_t HeadingInaccurateRelPosNedCount;//RAM only, like InvalidNavPvtCount
 extern time_t NavPvtMillis;
 extern time_t previousRelPosNedMillis;
 extern time_t previousNavPvtMillis;

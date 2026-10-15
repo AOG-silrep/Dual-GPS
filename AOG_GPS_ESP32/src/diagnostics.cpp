@@ -157,6 +157,10 @@ void diagnosticDisplay ( void* z ){
     addRow( str, "Bad checksum", diagnostics.badChecksumRelPosNEDCount );
     addRow( str, "Wrong length/version", diagnostics.wrongLengthRelPosNEDCount );
     addRow( str, "Dropped: heading not valid", HeadingInvalidRelPosNedCount );
+    addRow( str, "Dropped: not RTK fixed", NotFixedRelPosNedCount );
+    addRow( str, "Dropped: base data extrapolated", ExtrapolatedRelPosNedCount );
+    addRow( str, "Dropped: heading out of range", HeadingRangeRelPosNedCount );
+    addRow( str, "Dropped: heading inaccurate", HeadingInaccurateRelPosNedCount );
     str += "</table>";
     updateLabel( labelRelPosNed, str, relPosNedStale );
 

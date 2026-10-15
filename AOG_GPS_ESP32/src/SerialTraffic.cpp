@@ -6,6 +6,10 @@ uint64_t NavPvtCount;
 uint32_t InvalidNavPvtCount;
 uint32_t JumpNavPvtCount;
 uint32_t HeadingInvalidRelPosNedCount;
+uint32_t NotFixedRelPosNedCount;
+uint32_t ExtrapolatedRelPosNedCount;
+uint32_t HeadingRangeRelPosNedCount;
+uint32_t HeadingInaccurateRelPosNedCount;
 time_t RelPosNedMillis;
 time_t NavPvtMillis;
 uint64_t RelPosNedCount;
@@ -20,6 +24,10 @@ constexpr int32_t nullIslandBox = 10000000;     //1° around 0,0 is open ocean, 
 constexpr double maxPlausibleSpeed = 30.0;      //m/s ( ~108 km/h )
 constexpr double jumpMargin = 10.0;             //m, room for fix type changes
 constexpr uint8_t maxJumpRejects = 10;          //after this many jumps in a row accept the new position
+
+//NAV-RELPOSNED check, so a heading that can't be used never becomes UBXRingCount2
+constexpr int32_t maxRelPosHeading = 36000000;  //360°, deg * 10^-5
+constexpr uint32_t maxAccHeading = 200000;      //2°, deg * 10^-5; fixed on a 1-2 m baseline is ~0.1-0.5°
 
 static bool hasLastGoodPVT = false;
 static int32_t lastGoodLat = 0, lastGoodLon = 0;
@@ -47,6 +55,18 @@ static bool isPositionJump( const NAV_PVT& pvt ) {
 	dLon *= cos(lastGoodLat * 0.0000001 * PI180);
 	jumpDistance = hypot(dLat, dLon) * 111195.0;//m per degree
 	return jumpDistance > maxPlausibleSpeed * dtMs * 0.001 + jumpMargin;
+}
+
+//counts the first check that fails
+static bool isHeadingValid( const NAV_RELPOSNED& relPos ) {
+	if (gpsConfig.checkUBXFlags) {
+		if (!bitRead(relPos.flags, 8)) { HeadingInvalidRelPosNedCount++; return false; }//relPosHeadingValid
+		if (((relPos.flags >> 3) & 3) != 2) { NotFixedRelPosNedCount++; return false; }//carrSoln: 2 = fixed ambiguities
+		if (bitRead(relPos.flags, 6) || bitRead(relPos.flags, 7)) { ExtrapolatedRelPosNedCount++; return false; }//refPosMiss, refObsMiss
+	}
+	if (relPos.relPosHeading < 0 || relPos.relPosHeading > maxRelPosHeading) { HeadingRangeRelPosNedCount++; return false; }
+	if (relPos.accHeading > maxAccHeading) { HeadingInaccurateRelPosNedCount++; return false; }
+	return true;
 }
 
 void getSerialUBX( void* z ) {
@@ -346,29 +366,7 @@ void getSerial2UBX ( void* z ){
 								*/
 							if ((UBXRelPosNED[nextUBXcount2].CK0 == UBXchecksum2[0]) && (UBXRelPosNED[nextUBXcount2].CK1 == UBXchecksum2[1])) {
 								//checksum OK
-								if (gpsConfig.checkUBXFlags) {
-									if (bitRead(UBXRelPosNED[nextUBXcount2].flags, 8)) {
-										//flag: heading OK
-										existsUBXRelPosNED = true;
-										UBXRingCount2 = nextUBXcount2;
-										if (gpsConfig.debugmodeUBX) {
-											Serial.print("got RelPosNED. Heading: "); Serial.print((UBXRelPosNED[nextUBXcount2].relPosHeading * 0.00001), 2);
-											Serial.print(" down vector (cm): "); Serial.println((float(UBXRelPosNED[nextUBXcount2].relPosD) + (float(UBXRelPosNED[nextUBXcount2].relPosHPD) * 0.01)), 2);
-										}
-										if (gpsConfig.debugmodeRAW) {
-											Serial.print("SerIn: RelPosNED heading down dist flags"); Serial.print(",");
-											Serial.print(UBXRelPosNED[UBXRingCount2].relPosHeading); Serial.print(",");
-											Serial.print((float(UBXRelPosNED[nextUBXcount2].relPosD) + (float(UBXRelPosNED[nextUBXcount2].relPosHPD) * 0.01)), 2); Serial.print(",");
-											Serial.print(UBXRelPosNED[UBXRingCount2].relPosLength); Serial.print(",");
-											Serial.print(UBXRelPosNED[UBXRingCount2].flags); Serial.print(",");
-										}
-									}
-									else {
-										HeadingInvalidRelPosNedCount++;
-										if (gpsConfig.debugmodeUBX) { Serial.println("UBXRelPosNED flag heading: NOT valid, checksum OK; sentence NOT used"); }
-									}
-								}
-								else {//don't check UBX flags, checksum ok
+								if (isHeadingValid(UBXRelPosNED[nextUBXcount2])) {
 									existsUBXRelPosNED = true;
 									UBXRingCount2 = nextUBXcount2;
 									if (gpsConfig.debugmodeUBX) {
@@ -378,10 +376,16 @@ void getSerial2UBX ( void* z ){
 									if (gpsConfig.debugmodeRAW) {
 										Serial.print("SerIn: RelPosNED heading down dist flags"); Serial.print(",");
 										Serial.print(UBXRelPosNED[UBXRingCount2].relPosHeading); Serial.print(",");
-										Serial.print(UBXRelPosNED[UBXRingCount2].relPosD); Serial.print("."); Serial.print(UBXRelPosNED[nextUBXcount2].relPosHPD); Serial.print(",");
+										Serial.print((float(UBXRelPosNED[nextUBXcount2].relPosD) + (float(UBXRelPosNED[nextUBXcount2].relPosHPD) * 0.01)), 2); Serial.print(",");
 										Serial.print(UBXRelPosNED[UBXRingCount2].relPosLength); Serial.print(",");
 										Serial.print(UBXRelPosNED[UBXRingCount2].flags); Serial.print(",");
 									}
+								}
+								else if (gpsConfig.debugmodeUBX) {
+									Serial.print("UBX2 RelPosNED heading not used, checksum OK; flags: "); Serial.print(UBXRelPosNED[nextUBXcount2].flags, HEX);
+									Serial.print(" carrSoln: "); Serial.print((UBXRelPosNED[nextUBXcount2].flags >> 3) & 3);
+									Serial.print(" heading: "); Serial.print((UBXRelPosNED[nextUBXcount2].relPosHeading * 0.00001), 2);
+									Serial.print(" accHeading: "); Serial.println((UBXRelPosNED[nextUBXcount2].accHeading * 0.00001), 2);
 								}
 								previousRelPosNedMillis = RelPosNedMillis;
 								RelPosNedMillis = millis();

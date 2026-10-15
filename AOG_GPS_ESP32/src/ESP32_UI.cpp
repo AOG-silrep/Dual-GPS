@@ -70,6 +70,10 @@ void initESPUI ( void ) {
         InvalidNavPvtCount = 0;
         JumpNavPvtCount = 0;
         HeadingInvalidRelPosNedCount = 0;
+        NotFixedRelPosNedCount = 0;
+        ExtrapolatedRelPosNedCount = 0;
+        HeadingRangeRelPosNedCount = 0;
+        HeadingInaccurateRelPosNedCount = 0;
         gpsHzMaxMillis = gpsHzCurrentMillis;
         gpsHzMinMillis = gpsHzCurrentMillis;
         diagnostics.badChecksumNavPVTCount = 0;
