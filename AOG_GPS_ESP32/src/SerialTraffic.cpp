@@ -154,6 +154,8 @@ void getSerialUBX( void* z ) {
 								NavPvtCount ++;
 							}
 							else {
+								UBXDigit1 = 0;
+								UBXLength1 = 100;
 								if (gpsConfig.debugmodeUBX) { Serial.println("UBX1 PVT checksum invalid"); }
 								diagnostics.badChecksumNavPVTCount += 1;
 								saveDiagnostics();
