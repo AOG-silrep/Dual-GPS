@@ -101,6 +101,26 @@ static void appendDegMin( uint8_t* buffer, uint8_t& digit, int64_t minE7, uint8_
 	}
 }
 
+//append [-]ddd.dd (intDigits 3) or [-]dd.dd (intDigits 2) from a count of hundredths, rounded by the caller
+static void appendHundredths( uint8_t* buffer, uint8_t& digit, long v, uint8_t intDigits ) {
+	if (v < 0) { buffer[digit++] = 0x2D; v = -v; }//-
+	if (intDigits == 3) { buffer[digit++] = (v / 10000) + 48; v = v % 10000; }
+	buffer[digit++] = (v / 1000) + 48;
+	v = v % 1000;
+	buffer[digit++] = (v / 100) + 48;
+	v = v % 100;
+	buffer[digit++] = 0x2E;//.
+	buffer[digit++] = (v / 10) + 48;
+	buffer[digit++] = (v % 10) + 48;
+}
+
+//HeadingMix in hundredths of a degree, 359.996 rounds to 36000 and is sent as 000.00
+static long headingE2() {
+	long v = lround(HeadingMix * 100);
+	if (v >= 36000) { v -= 36000; }
+	return v;
+}
+
 void buildOGI() {
 	byte CRC = 0;
 	long templng;
@@ -230,37 +250,12 @@ void buildOGI() {
 	OGIBuffer[OGIdigit++] = 0x2C;//,
 
 
-	//GPS dual heading
-	double tempGPSHead = HeadingMix;
-	temp = byte(tempGPSHead / 100);
-	tempGPSHead = tempGPSHead - temp * 100;
-	OGIBuffer[OGIdigit++] = temp + 48;
-	temp = byte(tempGPSHead / 10);
-	tempGPSHead = tempGPSHead - temp * 10;
-	OGIBuffer[OGIdigit++] = temp + 48;
-	temp = byte(tempGPSHead);
-	tempGPSHead = tempGPSHead - temp;
-	OGIBuffer[OGIdigit++] = temp + 48;
-	OGIBuffer[OGIdigit++] = 0x2E;//.
-	temp = byte(tempGPSHead * 10);
-	OGIBuffer[OGIdigit++] = temp + 48;
+	//GPS dual heading ddd.dd
+	appendHundredths(OGIBuffer, OGIdigit, headingE2(), 3);
 	OGIBuffer[OGIdigit++] = 0x2C;//,
 
-	//roll
-	double tempRoll = 0 - rollToAOG;
-	if (tempRoll < 0) {
-		OGIBuffer[OGIdigit++] = 0x2D;//-
-		tempRoll *= -1;
-	}
-	temp = byte(tempRoll / 10);
-	tempRoll = tempRoll - temp * 10;
-	OGIBuffer[OGIdigit++] = temp + 48;
-	temp = byte(tempRoll);
-	tempRoll = tempRoll - temp;
-	OGIBuffer[OGIdigit++] = temp + 48;
-	OGIBuffer[OGIdigit++] = 0x2E;//.
-	temp = byte(tempRoll * 10);
-	OGIBuffer[OGIdigit++] = temp + 48;
+	//roll [-]dd.dd, sign from the rounded value
+	appendHundredths(OGIBuffer, OGIdigit, lround((0 - rollToAOG) * 100), 2);
 	OGIBuffer[OGIdigit++] = 0x2C;//,
 
 	//pitch
@@ -293,7 +288,6 @@ void buildOGI() {
 
 void buildHDT() {
 	byte CRC = 0;
-	byte tempbyt = 0;
 
 	HDTBuffer[0] = 0x24;//$
 	HDTBuffer[1] = 0x47;//G
@@ -302,35 +296,29 @@ void buildHDT() {
 	HDTBuffer[4] = 0x44;//D
 	HDTBuffer[5] = 0x54;//T
 	HDTBuffer[6] = 0x2C;//,
-	//heading
-	double tempGPSHead = HeadingMix;
-	tempbyt = byte(tempGPSHead / 100);
-	tempGPSHead = tempGPSHead - tempbyt * 100;
-	HDTBuffer[7] = tempbyt + 48;
-	tempbyt = byte(tempGPSHead / 10);
-	tempGPSHead = tempGPSHead - tempbyt * 10;
-	HDTBuffer[8] = tempbyt + 48;
-	tempbyt = byte(tempGPSHead);
-	tempGPSHead = tempGPSHead - tempbyt;
-	HDTBuffer[9] = tempbyt + 48;
-	HDTBuffer[10] = 0x2E;//.
-	tempbyt = byte(tempGPSHead * 10);
-	HDTBuffer[11] = tempbyt + 48;
 
-	HDTBuffer[12] = 0x2C;//,
-	HDTBuffer[13] = 0x54;//T
-	HDTBuffer[14] = 0x2A;//*
+	HDTdigit = 7;
+
+	//heading ddd.dd
+	appendHundredths(HDTBuffer, HDTdigit, headingE2(), 3);
+
+	HDTBuffer[HDTdigit++] = 0x2C;//,
+	HDTBuffer[HDTdigit++] = 0x54;//T
+	HDTBuffer[HDTdigit++] = 0x2A;//*
+
 	//checksum
-	for (byte index = 1; index <= 13; index++) {
+	for (byte index = 1; index <= (HDTdigit); index++) {
+		if (HDTBuffer[index] == 0x2A) {
+			break;
+		}
 		CRC = CRC ^ HDTBuffer[index];
 	}
-	HDTBuffer[15] = byte(CRC / 16) + 48;
-	if (HDTBuffer[15] > 57) { HDTBuffer[15] += 7; }//ASCII 48 = 0 ASCII A = 65
-	HDTBuffer[16] = byte(CRC % 16) + 48;
-	if (HDTBuffer[16] > 57) { HDTBuffer[16] += 7; }//ASCII 48 = 0 ASCII A = 65
-	HDTBuffer[17] = 0x0D;
-	HDTBuffer[18] = 0x0A;
-	HDTdigit = 19;
+	HDTBuffer[HDTdigit++] = byte(CRC / 16) + 48;
+	if (HDTBuffer[HDTdigit - 1] > 57) { HDTBuffer[HDTdigit - 1] += 7; }//ASCII 48 = 0 ASCII A = 65
+	HDTBuffer[HDTdigit++] = byte(CRC % 16) + 48;
+	if (HDTBuffer[HDTdigit - 1] > 57) { HDTBuffer[HDTdigit - 1] += 7; }//ASCII 48 = 0 ASCII A = 65
+	HDTBuffer[HDTdigit++] = 0x0D;
+	HDTBuffer[HDTdigit++] = 0x0A;
 
 	newHDT = true;
 }
@@ -473,7 +461,7 @@ void buildGGA() {
 
 
 void buildVTG() {
-	byte tempbyt = 0, CRC = 0;
+	byte CRC = 0;
 
 	//create $GPVTG
 	VTGBuffer[0] = 0x24;//$
@@ -487,20 +475,8 @@ void buildVTG() {
 	VTGdigit = 7;
 
 	//always +48 to get ASCII: "0" = 48
-	double tempGPSHead;
-	tempGPSHead = HeadingMix; //decided in Heading calc
-	tempbyt = byte(tempGPSHead / 100);
-	tempGPSHead = tempGPSHead - tempbyt * 100;
-	VTGBuffer[VTGdigit++] = tempbyt + 48;
-	tempbyt = byte(tempGPSHead / 10);
-	tempGPSHead = tempGPSHead - tempbyt * 10;
-	VTGBuffer[VTGdigit++] = tempbyt + 48;
-	tempbyt = byte(tempGPSHead);
-	tempGPSHead = tempGPSHead - tempbyt;
-	VTGBuffer[VTGdigit++] = tempbyt + 48;
-	VTGBuffer[VTGdigit++] = 0x2E;//.
-	tempbyt = byte(tempGPSHead * 10);
-	VTGBuffer[VTGdigit++] = tempbyt + 48;
+	//heading ddd.dd, HeadingMix decided in Heading calc
+	appendHundredths(VTGBuffer, VTGdigit, headingE2(), 3);
 	VTGBuffer[VTGdigit++] = 0x2C;//,
 	VTGBuffer[VTGdigit++] = 0x54;//T
 	VTGBuffer[VTGdigit++] = 0x2C;//,
@@ -573,7 +549,7 @@ void buildVTG() {
 }
 
 void buildRMC() {
-	byte tempbyt = 0, CRC = 0;
+	byte CRC = 0;
 
 	//create $GPRMC
 	RMCBuffer[0] = 0x24;//$
@@ -646,21 +622,8 @@ void buildRMC() {
 	RMCBuffer[RMCdigit++] = speed1000Knotes + 48;
 	RMCBuffer[RMCdigit++] = 0x2C;//,
 
-	//course over ground
-	double tempGPSHead;
-	tempGPSHead = HeadingMix; //decided in Heading calc
-	tempbyt = byte(tempGPSHead / 100);
-	tempGPSHead = tempGPSHead - tempbyt * 100;
-	RMCBuffer[RMCdigit++] = tempbyt + 48;
-	tempbyt = byte(tempGPSHead / 10);
-	tempGPSHead = tempGPSHead - tempbyt * 10;
-	RMCBuffer[RMCdigit++] = tempbyt + 48;
-	tempbyt = byte(tempGPSHead);
-	tempGPSHead = tempGPSHead - tempbyt;
-	RMCBuffer[RMCdigit++] = tempbyt + 48;
-	RMCBuffer[RMCdigit++] = 0x2E;//.
-	tempbyt = byte(tempGPSHead * 10);
-	RMCBuffer[RMCdigit++] = tempbyt + 48;
+	//course over ground ddd.dd, HeadingMix decided in Heading calc
+	appendHundredths(RMCBuffer, RMCdigit, headingE2(), 3);
 	RMCBuffer[RMCdigit++] = 0x2C;//,
 
 	//Date
