@@ -159,9 +159,13 @@ void buildOGI() {
 
 	OGIBuffer[OGIdigit++] = 0x2C;//,
 
-	//lat lon in 1e-7 minutes: NAV-PVT 1e-7 deg * 60 is exact, the virtual antenna / filtered double is rounded once
+	//lat lon in 1e-7 minutes: NAV-PVT 1e-7 deg * 60 is exact, the filtered / virtual antenna double is rounded once
 	int64_t latMin, lonMin;
-	if (filterGPSpos || virtAntPosPresent) {
+	if (filterGPSpos) {//weak signal: Kalman filtered
+		latMin = llround(latXe * 600000000.0);
+		lonMin = llround(lonXe * 600000000.0);
+	}
+	else if (virtAntPosPresent) {
 		latMin = llround(virtLat * 600000000.0);
 		lonMin = llround(virtLon * 600000000.0);
 	}

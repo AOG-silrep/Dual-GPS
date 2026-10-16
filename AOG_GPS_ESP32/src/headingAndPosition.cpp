@@ -646,18 +646,17 @@ void filterPosition(){
 	lonXe = ( lonG * ( lonK - lonZp )) + lonXp;
 
 	if( gpsConfig.debugmodeRAW ){
-		Serial.print( "virtLat virtLon filtVirtLat FiltVirtLog," );
-		Serial.print( virtLat,8 ); Serial.print( "," );
-		Serial.print( virtLon,8 ); Serial.print( "," );
+		Serial.print( "latK lonK filtLat filtLon," );
+		Serial.print( latK,8 ); Serial.print( "," );
+		Serial.print( lonK,8 ); Serial.print( "," );
 		Serial.print( latXe,8 ); Serial.print( "," );
 		Serial.print( lonXe,8 ); Serial.print( "," );
 	}
 
-	virtLon = lonXe;//result
-	virtLat = latXe;//result
+	//result stays in latXe/lonXe, buildOGI sends it only when filterGPSpos
 	if( gpsConfig.debugmodeHeading || gpsConfig.debugmodeFilterPos ){
-		Serial.print( " lat filtered: " ); Serial.print( virtLat, 7 );
-		Serial.print( " lon: " ); Serial.print( lonK, 7 ); Serial.print( " lon filtered: " ); Serial.println( virtLon, 7 );
+		Serial.print( " lat filtered: " ); Serial.print( latXe, 7 );
+		Serial.print( " lon: " ); Serial.print( lonK, 7 ); Serial.print( " lon filtered: " ); Serial.println( lonXe, 7 );
 	}
 }
 
@@ -674,6 +673,7 @@ void headingAndPosition ( void* z ){
 		{
 			OGIfromUBX = ringCount1;
 			headingRollCalc( ringCount1 );
+			virtAntPosPresent = false;//set again by virtualAntennaPoint()
 			if( existsUBXRelPosNED ){
 				//virtual Antenna point?
 				if(( gpsConfig.virtAntForew != 0 ) || ( gpsConfig.virtAntRight != 0 ) ||
@@ -684,7 +684,6 @@ void headingAndPosition ( void* z ){
 			}
 			else //only 1 Antenna
 			{
-				virtAntPosPresent = false;
 				if(( gpsConfig.debugmodeHeading ) || ( gpsConfig.debugmodeVirtAnt )){ Serial.println( "no dual Antenna values so not virtual Antenna point calc" ); }
 			}
 
