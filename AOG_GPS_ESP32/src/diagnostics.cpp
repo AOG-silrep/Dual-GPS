@@ -161,6 +161,7 @@ void diagnosticDisplay ( void* z ){
     addRow( str, "Dropped: base data extrapolated", ExtrapolatedRelPosNedCount );
     addRow( str, "Dropped: heading out of range", HeadingRangeRelPosNedCount );
     addRow( str, "Dropped: heading inaccurate", HeadingInaccurateRelPosNedCount );
+    addRow( str, "Stale at NAV-PVT (> 2 epochs)", StaleRelPosNedCount );
     str += "</table>";
     updateLabel( labelRelPosNed, str, relPosNedStale );
 

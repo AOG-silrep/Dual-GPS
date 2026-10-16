@@ -69,6 +69,7 @@ uint8_t noRollCount = 0,  drivDirect = 0;
 bool dualGPSHeadingPresent = false, rollPresent = false, virtAntPosPresent = false;
 bool relPosNedFresh = false;
 int32_t relPosNedAgeMs = 0;
+uint32_t StaleRelPosNedCount;
 double roll = 0.0, rollToAOG = 0.0;
 uint8_t dualAntNoValueCount = 0, dualAntNoValueMax = 20;// if dual Ant value not valid for xx times, send position without correction/heading/roll
 //RelPosNED is fresh within this many epochs of the NAV-PVT; the epoch is clamped for the first NAV-PVT and after gaps
@@ -140,6 +141,7 @@ void headingRollCalc( uint8_t ringCount1 ){
 		const int32_t epochMs = constrain( pvtIntervalMs, minEpochMs, maxEpochMs );
 		relPosNedAgeMs = iTOWDiff( epochPVT.iTOW, relPosNed.iTOW );
 		relPosNedFresh = abs( relPosNedAgeMs ) <= ( relPosNedFreshEpochs * epochMs );
+		if( !relPosNedFresh ){ StaleRelPosNedCount++; }
 		//gnssFixOK, relative position components and moving baseline valid
 		bool relPosNedOk = relPosNedFresh && (( bitRead( relPosNed.flags, 0 ) && bitRead( relPosNed.flags, 2 )) || ( gpsConfig.checkUBXFlags == 0 ));
 
@@ -777,5 +779,6 @@ void headingAndPosition ( void* z ){
 }
 
 void initHeadingAndPosition( ){
-  xTaskCreate( headingAndPosition, "headingAndPosition", 3096, NULL, 5, NULL );
+  //above async_tcp (10), below the UBX readers (12) so they get the Serial lock first
+  xTaskCreate( headingAndPosition, "headingAndPosition", 3096, NULL, 11, NULL );
 }

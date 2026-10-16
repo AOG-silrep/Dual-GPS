@@ -421,6 +421,7 @@ void getSerial2UBX ( void* z ){
 }
 
 void initSerialUbxReceivers( ){
-  xTaskCreate( getSerialUBX, "getSerialUBX", 3096, NULL, 5, NULL );
-  xTaskCreate( getSerial2UBX, "getSerial2UBX", 3096, NULL, 5, NULL );
+  //above async_tcp (10) and the web UI, so a UI burst can't hold the UBX streams back and make RelPosNED stale
+  xTaskCreate( getSerialUBX, "getSerialUBX", 3096, NULL, 12, NULL );
+  xTaskCreate( getSerial2UBX, "getSerial2UBX", 3096, NULL, 12, NULL );
 }

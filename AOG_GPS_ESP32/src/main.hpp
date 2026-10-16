@@ -38,6 +38,7 @@ extern uint32_t NotFixedRelPosNedCount;//RAM only, like InvalidNavPvtCount
 extern uint32_t ExtrapolatedRelPosNedCount;//RAM only, like InvalidNavPvtCount
 extern uint32_t HeadingRangeRelPosNedCount;//RAM only, like InvalidNavPvtCount
 extern uint32_t HeadingInaccurateRelPosNedCount;//RAM only, like InvalidNavPvtCount
+extern uint32_t StaleRelPosNedCount;//NAV-PVT epochs whose RelPosNED was stale; RAM only, like InvalidNavPvtCount
 extern time_t NavPvtMillis;
 extern time_t previousRelPosNedMillis;
 extern time_t previousNavPvtMillis;

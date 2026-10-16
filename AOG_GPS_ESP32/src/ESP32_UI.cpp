@@ -74,6 +74,7 @@ void initESPUI ( void ) {
         ExtrapolatedRelPosNedCount = 0;
         HeadingRangeRelPosNedCount = 0;
         HeadingInaccurateRelPosNedCount = 0;
+        StaleRelPosNedCount = 0;
         gpsHzMaxMillis = gpsHzCurrentMillis;
         gpsHzMinMillis = gpsHzCurrentMillis;
         diagnostics.badChecksumNavPVTCount = 0;

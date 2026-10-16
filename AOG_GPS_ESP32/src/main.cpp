@@ -57,8 +57,11 @@ void setup( void ) {
 
   loadSavedConfig();
 
+  //~4 epochs of NAV-PVT + GGA + VTG, the default 256 holds ~1
+  Serial1.setRxBufferSize( 1024 );
   Serial1.begin( 115200, SERIAL_8N1, gpsConfig.gpioGpsRX1, gpsConfig.gpioGpsTX1 );
   delay( 10);
+  Serial2.setRxBufferSize( 1024 );
   Serial2.begin( 115200, SERIAL_8N1, gpsConfig.gpioGpsRX2, gpsConfig.gpioGpsTX2 );
 
   Serial.updateBaudRate( gpsConfig.baudrate );
