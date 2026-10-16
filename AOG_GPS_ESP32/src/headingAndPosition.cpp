@@ -8,12 +8,12 @@ double rollP = 1.0;
 double rollVar = 0.1; // variance, smaller: faster, less filtering
 double rollVarProcess = 0.3;// 0.0005;// 0.0003;  bigger: faster, less filtering// replaced by fast/slow depending on GPS quality
 //Kalman filter heading
-double headK, headPc, headG, headXp, headZp, headXe;
+double headK, headPc, headG, headXp, headZp, headXe, headSinXe;
 double headP = 1.0;
 double headVar = 0.1; // variance, smaller, more faster filtering
 double headVarProcess = 0.1;// 0.001;//  bigger: faster, less filtering// replaced by fast/slow depending on GPS quality
 //Kalman filter heading
-double headVTGK, headVTGPc, headVTGG, headVTGXp, headVTGZp, headVTGXe;
+double headVTGK, headVTGPc, headVTGG, headVTGXp, headVTGZp, headVTGXe, headVTGSinXe;
 double headVTGP = 1.0;
 double headVTGVar = 0.1; // variance, smaller, more faster filtering
 double headVTGVarProcess = 0.01;// 0.001;//  bigger: faster, less filtering// replaced by fast/slow depending on GPS quality
@@ -243,9 +243,9 @@ void headingRollCalc( uint8_t ringCount1 ){
 				}
 			}//end of deviation good or perfect					
 		//heading
-			//in [0, 360) for the half-plane pick after the filter
+			//in [0, 360) for the debug prints
 			HeadingRelPosNED = wrap360(( double( relPosNed.relPosHeading ) * 0.00001 ) + headingCorrection );
-			//go to cos for filtering to avoid 360-0° jump
+			//filter cos and sin to avoid the 360-0° jump, atan2 brings the angle back at every heading
 			cosHeadRelPosNED = cos(( HeadingRelPosNED * PI180 ));
 			if( gpsConfig.debugmodeRAW ){
 				Serial.print( "GPShead cos filtCos filtGPSHead" ); Serial.print( "," );
@@ -254,7 +254,7 @@ void headingRollCalc( uint8_t ringCount1 ){
 			}
 
 			if( gpsConfig.debugmodeHeading ){ Serial.print( "RelPosNED heading calc: " ); Serial.print( HeadingRelPosNED ); }
-			//Kalman filter heading
+			//Kalman filter heading, sin with the same gain as cos
 			headK = cosHeadRelPosNED;//input
 			headPc = headP + headVarProcess;
 			headG = headPc / ( headPc + headVar );
@@ -262,13 +262,10 @@ void headingRollCalc( uint8_t ringCount1 ){
 			headXp = headXe;
 			headZp = headXp;
 			headXe = ( headG * ( headK - headZp )) + headXp;//result
+			headSinXe += headG * ( sin(( HeadingRelPosNED * PI180 )) - headSinXe );//result
 			cosHeadRelPosNED = headXe;
 			//go back to degree
-			if( HeadingRelPosNED <= 180 )
-			{
-				HeadingRelPosNED = acos( headXe ) / PI180;
-			}
-			else { HeadingRelPosNED = double( 360.0 ) - ( acos( headXe ) / PI180 ); }
+			HeadingRelPosNED = wrap360( atan2( headSinXe, headXe ) / PI180 );
 
 			if( gpsConfig.debugmodeRAW ){
 				Serial.print( headXe, 4 ); Serial.print( "," );
@@ -373,27 +370,23 @@ void headingRollCalc( uint8_t ringCount1 ){
 		}
 	}
 
-	//HeadingVTG Kalman filter go to cos for filtering to avoid 360-0° jump
+	//HeadingVTG Kalman filter: cos and sin to avoid the 360-0° jump, atan2 brings the angle back at every heading
 	//cosHeadVTG = cos(( HeadingVTG * 0.6 ) + ( epochPVT.headMot * 0.000004 * PI180 ));
 	cosHeadVTG = cos(( epochPVT.headMot * 0.00001 * PI180 ));
 	headVTGK = cosHeadVTG;//input
-	if( abs( cosHeadVTG ) > 0.98 ){ headVTGPc = headVTGP + ( headVTGVarProcess * 10 ); }//"open" filter in 356-4 deg region
-	else { headVTGPc = headVTGP + headVTGVarProcess; }
+	headVTGPc = headVTGP + headVTGVarProcess;
 	headVTGG = headVTGPc / ( headVTGPc + headVTGVar );
 	headVTGP = ( 1 - headVTGG ) * headVTGPc;
 	headVTGXp = headVTGXe;
 	headVTGZp = headVTGXp;
 	headVTGXe = ( headVTGG * ( headVTGK - headVTGZp )) + headVTGXp;//result
+	headVTGSinXe += headVTGG * ( sin(( epochPVT.headMot * 0.00001 * PI180 )) - headVTGSinXe );//result
 
 	cosHeadVTG = headVTGXe;
 
 	//go back to degree
 	HeadingVTGOld = HeadingVTG;//bak old value for constrain
-	if( epochPVT.headMot <= 18000000 )
-	{
-		HeadingVTG = acos( headVTGXe ) / PI180;
-	}
-	else { HeadingVTG = double( 360.0 ) - ( acos( headVTGXe ) / PI180 ); }
+	HeadingVTG = wrap360( atan2( headVTGSinXe, headVTGXe ) / PI180 );
 
 	if( gpsConfig.debugmodeHeading ){ Serial.print( "VTG heading ( only from Ant R ) filtered: " ); Serial.println( HeadingVTG ); }
 

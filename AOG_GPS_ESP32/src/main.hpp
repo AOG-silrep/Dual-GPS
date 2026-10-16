@@ -54,12 +54,12 @@ extern double rollP;
 extern double rollVar;
 extern double rollVarProcess;
 //Kalman filter heading
-extern double headK, headPc, headG, headXp, headZp, headXe;
+extern double headK, headPc, headG, headXp, headZp, headXe, headSinXe;
 extern double headP;
 extern double headVar;
 extern double headVarProcess;
 //Kalman filter heading
-extern double headVTGK, headVTGPc, headVTGG, headVTGXp, headVTGZp, headVTGXe;
+extern double headVTGK, headVTGPc, headVTGG, headVTGXp, headVTGZp, headVTGXe, headVTGSinXe;
 extern double headVTGP;
 extern double headVTGVar;
 extern double headVTGVarProcess;
