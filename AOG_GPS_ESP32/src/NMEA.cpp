@@ -82,6 +82,25 @@ uint8_t OGIBuffer[sizeOfOGIBuffer], HDTBuffer[sizeOfHDTBuffer], VTGBuffer[sizeOf
 bool newOGI = false, newHDT = false, newGGA = false, newVTG = false, newRMC = false;
 uint8_t OGIdigit = 0, GGAdigit = 0, VTGdigit = 0, HDTdigit = 0, RMCdigit = 0;
 
+//append ddmm.mmmmmmm (degDigits 2) or dddmm.mmmmmmm (degDigits 3) from a count of 1e-7 minutes, sign written by the caller
+static void appendDegMin( uint8_t* buffer, uint8_t& digit, int64_t minE7, uint8_t degDigits ) {
+	if (minE7 < 0) { minE7 = -minE7; }
+	long deg = minE7 / 600000000;//60 min * 10^7
+	long min = minE7 % 600000000;
+	if (degDigits == 3) { buffer[digit++] = (deg / 100) + 48; deg = deg % 100; }
+	buffer[digit++] = (deg / 10) + 48;
+	buffer[digit++] = (deg % 10) + 48;
+	buffer[digit++] = (min / 100000000) + 48;
+	min = min % 100000000;
+	buffer[digit++] = (min / 10000000) + 48;
+	min = min % 10000000;
+	buffer[digit++] = 0x2E;//.
+	for (long div = 1000000; div > 0; div /= 10) {
+		buffer[digit++] = (min / div) + 48;
+		min = min % div;
+	}
+}
+
 void buildOGI() {
 	byte CRC = 0;
 	long templng;
@@ -120,72 +139,30 @@ void buildOGI() {
 
 	OGIBuffer[OGIdigit++] = 0x2C;//,
 
-	//lat: xx min min . min/10 .. 4.5 digits
-	if (filterGPSpos || virtAntPosPresent) { templng = lround(virtLat * 10000000); }
-	else { templng = epochPVT.lat; }
-	if (gpsConfig.debugmodeRAW) { Serial.print("buildOGI tempLat temLon,"); Serial.print(templng); Serial.print(",");}
-	//N/S?
-	byte Sign = 0x53;//S
-	if (templng > 0) {Sign = 0x4E;}//N	
-	templng = abs(templng);
-	OGIBuffer[OGIdigit++] = (templng / 100000000)+48;
-	templng = templng % 100000000;
-	OGIBuffer[OGIdigit++] = (templng / 10000000) + 48;
-	templng = templng % 10000000;
-	templng = (templng * 6 + 5) / 10;//dec to min, rounded
-	OGIBuffer[OGIdigit++] = (templng / 1000000) + 48;
-	templng = templng % 1000000;
-	OGIBuffer[OGIdigit++] = (templng / 100000) + 48;
-	templng = templng % 100000;
-	OGIBuffer[OGIdigit++] = 0x2E;//.
-	OGIBuffer[OGIdigit++] = (templng / 10000) + 48;
-	templng = templng % 10000;
-	OGIBuffer[OGIdigit++] = (templng / 1000) + 48;
-	templng = templng % 1000;
-	OGIBuffer[OGIdigit++] = (templng /100)+ 48;
-	templng = templng % 100;
-	OGIBuffer[OGIdigit++] = (templng / 10) + 48;
-	templng = templng % 10;	
-	OGIBuffer[OGIdigit++] = templng + 48;
+	//lat lon in 1e-7 minutes: NAV-PVT 1e-7 deg * 60 is exact, the virtual antenna / filtered double is rounded once
+	int64_t latMin, lonMin;
+	if (filterGPSpos || virtAntPosPresent) {
+		latMin = llround(virtLat * 600000000.0);
+		lonMin = llround(virtLon * 600000000.0);
+	}
+	else {
+		latMin = int64_t(epochPVT.lat) * 60;
+		lonMin = int64_t(epochPVT.lon) * 60;
+	}
+	if (gpsConfig.debugmodeRAW) { Serial.print("buildOGI latMin lonMin,"); Serial.print(latMin); Serial.print(","); Serial.print(lonMin); Serial.print(","); }
 
+	//lat: ddmm.mmmmmmm
+	appendDegMin(OGIBuffer, OGIdigit, latMin, 2);
 	OGIBuffer[OGIdigit++] = 0x2C;//,
 	//N/S
-	OGIBuffer[OGIdigit++] = Sign;
+	OGIBuffer[OGIdigit++] = (latMin > 0) ? 0x4E : 0x53;//N : S
 	OGIBuffer[OGIdigit++] = 0x2C;//,
 
-	//lon: xxx min min . min/10 .. 5.5 digits
-	if (filterGPSpos || virtAntPosPresent) { templng = lround(virtLon * 10000000); }
-	else { templng = epochPVT.lon; }
-	if (gpsConfig.debugmodeRAW) { Serial.print(templng); Serial.print(","); }
-	//E/W?
-	if (templng < 0){Sign = 0x57;}//W
-	else{Sign= 0x45;	}//E
-	templng = abs(templng);
-	OGIBuffer[OGIdigit++] = (templng / 1000000000) + 48;
-	templng = templng % 1000000000;
-	OGIBuffer[OGIdigit++] = (templng / 100000000) + 48;
-	templng = templng % 100000000;
-	OGIBuffer[OGIdigit++] = (templng / 10000000) + 48;
-	templng = templng % 10000000;
-	templng = (templng * 6 + 5) / 10;//dec to min, rounded
-	OGIBuffer[OGIdigit++] = (templng / 1000000) + 48;
-	templng = templng % 1000000;
-	OGIBuffer[OGIdigit++] = (templng / 100000) + 48;
-	templng = templng % 100000;
-	OGIBuffer[OGIdigit++] = 0x2E;//.
-	OGIBuffer[OGIdigit++] = (templng / 10000) + 48;
-	templng = templng % 10000;
-	OGIBuffer[OGIdigit++] = (templng / 1000) + 48;
-	templng = templng % 1000;
-	OGIBuffer[OGIdigit++] = (templng / 100) + 48;
-	templng = templng % 100;
-	OGIBuffer[OGIdigit++] = (templng / 10) + 48;
-	templng = templng % 10;
-	OGIBuffer[OGIdigit++] = templng + 48;
-
+	//lon: dddmm.mmmmmmm
+	appendDegMin(OGIBuffer, OGIdigit, lonMin, 3);
 	OGIBuffer[OGIdigit++] = 0x2C;//,
 	//E/W
-	OGIBuffer[OGIdigit++] = Sign;
+	OGIBuffer[OGIdigit++] = (lonMin < 0) ? 0x57 : 0x45;//W : E
 	OGIBuffer[OGIdigit++] = 0x2C;//,
 
 	//fix type
@@ -400,68 +377,18 @@ void buildGGA() {
 
 	GGABuffer[GGAdigit++] = 0x2C;//,
 
-	//lat: xx min min . min/10 .. 4.5 digits
-	long Lat = epochPVT.lat;
-	//N/S?
-	byte Sign = 0x53;//S
-	if (Lat > 0) { Sign = 0x4E; }//N	
-	Lat = abs(Lat);
-	GGABuffer[GGAdigit++] = (Lat / 100000000) + 48;
-	Lat = Lat % 100000000;
-	GGABuffer[GGAdigit++] = (Lat / 10000000) + 48;
-	Lat = Lat % 10000000;
-	Lat = (Lat * 6 + 5) / 10;//dec to min, rounded
-	GGABuffer[GGAdigit++] = (Lat / 1000000) + 48;
-	Lat = Lat % 1000000;
-	GGABuffer[GGAdigit++] = (Lat / 100000) + 48;
-	Lat = Lat % 100000;
-	GGABuffer[GGAdigit++] = 0x2E;//.
-	GGABuffer[GGAdigit++] = (Lat / 10000) + 48;
-	Lat = Lat % 10000;
-	GGABuffer[GGAdigit++] = (Lat / 1000) + 48;
-	Lat = Lat % 1000;
-	GGABuffer[GGAdigit++] = (Lat / 100) + 48;
-	Lat = Lat % 100;
-	GGABuffer[GGAdigit++] = (Lat / 10) + 48;
-	Lat = Lat % 10;
-	GGABuffer[GGAdigit++] = Lat + 48;
-
+	//lat: ddmm.mmmmmmm, NAV-PVT 1e-7 deg * 60 = 1e-7 min exact
+	appendDegMin(GGABuffer, GGAdigit, int64_t(epochPVT.lat) * 60, 2);
 	GGABuffer[GGAdigit++] = 0x2C;//,
 	//N/S
-	GGABuffer[GGAdigit++] = Sign;
+	GGABuffer[GGAdigit++] = (epochPVT.lat > 0) ? 0x4E : 0x53;//N : S
 	GGABuffer[GGAdigit++] = 0x2C;//,
 
-	// lon: xxx min min . min/10 .. 5.5 digits
-	long Lon = epochPVT.lon;
-	//E/W?
-	if (Lon < 0) { Sign = 0x57; }//W
-	else { Sign = 0x45; }//E
-	Lon = abs(Lon);
-	GGABuffer[GGAdigit++] = (Lon / 1000000000) + 48;
-	Lon = Lon % 1000000000;
-	GGABuffer[GGAdigit++] = (Lon / 100000000) + 48;
-	Lon = Lon % 100000000;
-	GGABuffer[GGAdigit++] = (Lon / 10000000) + 48;
-	Lon = Lon % 10000000;
-	Lon = (Lon * 6 + 5) / 10;//dec to min, rounded
-	GGABuffer[GGAdigit++] = (Lon / 1000000) + 48;
-	Lon = Lon % 1000000;
-	GGABuffer[GGAdigit++] = (Lon / 100000) + 48;
-	Lon = Lon % 100000;
-	GGABuffer[GGAdigit++] = 0x2E;//.
-	GGABuffer[GGAdigit++] = (Lon / 10000) + 48;
-	Lon = Lon % 10000;
-	GGABuffer[GGAdigit++] = (Lon / 1000) + 48;
-	Lon = Lon % 1000;
-	GGABuffer[GGAdigit++] = (Lon / 100) + 48;
-	Lon = Lon % 100;
-	GGABuffer[GGAdigit++] = (Lon / 10) + 48;
-	Lon = Lon % 10;
-	GGABuffer[GGAdigit++] = Lon + 48;
-
+	//lon: dddmm.mmmmmmm
+	appendDegMin(GGABuffer, GGAdigit, int64_t(epochPVT.lon) * 60, 3);
 	GGABuffer[GGAdigit++] = 0x2C;//,
 	//E/W
-	GGABuffer[GGAdigit++] = Sign;
+	GGABuffer[GGAdigit++] = (epochPVT.lon < 0) ? 0x57 : 0x45;//W : E
 	GGABuffer[GGAdigit++] = 0x2C;//,
 
 	//fix type
@@ -686,68 +613,18 @@ void buildRMC() {
 
 	RMCBuffer[RMCdigit++] = 0x2C;//,
 
-	//lat: xx min min . min/10 .. 4.5 digits
-	long Lat = epochPVT.lat;
-	//N/S?	
-	byte Sign = 0x53;//S
-	if (Lat > 0) { Sign = 0x4E; }//N
-	Lat = abs(Lat);
-	RMCBuffer[RMCdigit++] = (Lat / 100000000) + 48;
-	Lat = Lat % 100000000;
-	RMCBuffer[RMCdigit++] = (Lat / 10000000) + 48;
-	Lat = Lat % 10000000;
-	Lat = (Lat * 6 + 5) / 10;//dec to min, rounded
-	RMCBuffer[RMCdigit++] = (Lat / 1000000) + 48;
-	Lat = Lat % 1000000;
-	RMCBuffer[RMCdigit++] = (Lat / 100000) + 48;
-	Lat = Lat % 100000;
-	RMCBuffer[RMCdigit++] = 0x2E;//.
-	RMCBuffer[RMCdigit++] = (Lat / 10000) + 48;
-	Lat = Lat % 10000;
-	RMCBuffer[RMCdigit++] = (Lat / 1000) + 48;
-	Lat = Lat % 1000;
-	RMCBuffer[RMCdigit++] = (Lat / 100) + 48;
-	Lat = Lat % 100;
-	RMCBuffer[RMCdigit++] = (Lat / 10) + 48;
-	Lat = Lat % 10;
-	RMCBuffer[RMCdigit++] = Lat + 48;
-
+	//lat: ddmm.mmmmmmm, NAV-PVT 1e-7 deg * 60 = 1e-7 min exact
+	appendDegMin(RMCBuffer, RMCdigit, int64_t(epochPVT.lat) * 60, 2);
 	RMCBuffer[RMCdigit++] = 0x2C;//,
 	//N/S
-	RMCBuffer[RMCdigit++] = Sign;
+	RMCBuffer[RMCdigit++] = (epochPVT.lat > 0) ? 0x4E : 0x53;//N : S
 	RMCBuffer[RMCdigit++] = 0x2C;//,
 
-	//lon: xxx min min . min/10 .. 5.5 digits
-	long Lon = epochPVT.lon;
-	//E/W?
-	if (Lon < 0) { Sign = 0x57; }//W
-	else { Sign = 0x45; }//E
-	Lon = abs(Lon);
-	RMCBuffer[RMCdigit++] = (Lon / 1000000000) + 48;
-	Lon = Lon % 1000000000;
-	RMCBuffer[RMCdigit++] = (Lon / 100000000) + 48;
-	Lon = Lon % 100000000;
-	RMCBuffer[RMCdigit++] = (Lon / 10000000) + 48;
-	Lon = Lon % 10000000;
-	Lon = (Lon * 6 + 5) / 10;//dec to min, rounded
-	RMCBuffer[RMCdigit++] = (Lon / 1000000) + 48;
-	Lon = Lon % 1000000;
-	RMCBuffer[RMCdigit++] = (Lon / 100000) + 48;
-	Lon = Lon % 100000;
-	RMCBuffer[RMCdigit++] = 0x2E;//.
-	RMCBuffer[RMCdigit++] = (Lon / 10000) + 48;
-	Lon = Lon % 10000;
-	RMCBuffer[RMCdigit++] = (Lon / 1000) + 48;
-	Lon = Lon % 1000;
-	RMCBuffer[RMCdigit++] = (Lon / 100) + 48;
-	Lon = Lon % 100;
-	RMCBuffer[RMCdigit++] = (Lon / 10) + 48;
-	Lon = Lon % 10;
-	RMCBuffer[RMCdigit++] = Lon + 48;
-
+	//lon: dddmm.mmmmmmm
+	appendDegMin(RMCBuffer, RMCdigit, int64_t(epochPVT.lon) * 60, 3);
 	RMCBuffer[RMCdigit++] = 0x2C;//,
 	//E/W
-	RMCBuffer[RMCdigit++] = Sign;
+	RMCBuffer[RMCdigit++] = (epochPVT.lon < 0) ? 0x57 : 0x45;//W : E
 	RMCBuffer[RMCdigit++] = 0x2C;//,
 
 	//ground speed knots

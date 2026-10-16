@@ -163,7 +163,7 @@ extern NAV_PVT epochPVT;//the NAV-PVT being processed, copied once from UBXPVT1;
 constexpr uint32_t msPerGpsWeek = 604800000;//iTOW wraps weekly
 
 //NMEA
-constexpr uint8_t sizeOfOGIBuffer = 96, sizeOfHDTBuffer = 24, sizeOfVTGBuffer = 55, sizeOfGGABuffer = 80, sizeOfRMCBuffer = 80;
+constexpr uint8_t sizeOfOGIBuffer = 104, sizeOfHDTBuffer = 24, sizeOfVTGBuffer = 55, sizeOfGGABuffer = 80, sizeOfRMCBuffer = 80;
 extern uint8_t OGIBuffer[sizeOfOGIBuffer], HDTBuffer[sizeOfHDTBuffer], VTGBuffer[sizeOfVTGBuffer], GGABuffer[sizeOfGGABuffer], RMCBuffer[sizeOfRMCBuffer];
 extern bool newOGI, newHDT, newGGA, newVTG;
 extern uint8_t OGIdigit, GGAdigit, VTGdigit, HDTdigit, RMCdigit;
