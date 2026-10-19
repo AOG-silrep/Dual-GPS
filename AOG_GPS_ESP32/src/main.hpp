@@ -96,6 +96,7 @@ extern bool bNMEAstarted, bGGAexists;
 extern String sNMEA;
 extern int16_t i, iPos;
 extern int8_t cFixQualGGA;
+extern int16_t hdopGGA;//HDOP from the F9P's GGA in hundredths, -1 = none parsed yet
 
 //heading + roll
 extern double HeadingRelPosNED, cosHeadRelPosNED, HeadingVTG, HeadingVTGOld, cosHeadVTG, HeadingMix, cosHeadMix;

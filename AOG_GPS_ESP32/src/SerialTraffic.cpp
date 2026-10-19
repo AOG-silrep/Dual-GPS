@@ -69,6 +69,29 @@ static bool isHeadingValid( const NAV_RELPOSNED& relPos ) {
 	return true;
 }
 
+//NMEA number d[d].dd at p in hundredths, -1 if it is empty or not followed by ','
+static int16_t parseHundredths( const String& s, int p ) {
+	const int len = s.length();
+	long v = 0;
+	uint8_t intDigits = 0, decDigits = 0;
+	while (p < len && isDigit(s[p])) {
+		if (++intDigits > 3) { return -1; }
+		v = v * 10 + (s[p++] - '0');
+	}
+	v *= 100;
+	if (p < len && s[p] == '.') {
+		p++;
+		while (p < len && isDigit(s[p])) {
+			if (decDigits == 0) { v += (s[p] - '0') * 10; }
+			else if (decDigits == 1) { v += s[p] - '0'; }
+			decDigits++;
+			p++;
+		}
+	}
+	if (intDigits == 0 || p >= len || s[p] != ',') { return -1; }
+	return (v > 9999) ? 9999 : v;
+}
+
 void getSerialUBX( void* z ) {
 	bool checksumOk1 = false;
 	byte incomByte1 = 0, idx1 = 0;
@@ -126,6 +149,14 @@ void getSerialUBX( void* z ) {
 							if (iPos > -1) { i++; }
 						} while ((i < 6) && (iPos > -1));
 						if (iPos > -1) { cFixQualGGA = sNMEA.charAt(iPos + 1); bGGAexists = true; }
+
+						//HDOP is two ',' further ( 7 = numSV, 8 = HDOP ), an empty field keeps the last one
+						if (iPos > -1) { iPos = sNMEA.indexOf(',', iPos + 1); }
+						if (iPos > -1) { iPos = sNMEA.indexOf(',', iPos + 1); }
+						if (iPos > -1) {
+							int16_t hdop = parseHundredths(sNMEA, iPos + 1);
+							if (hdop >= 0) { hdopGGA = hdop; }
+						}
 					}
 				}
 			}

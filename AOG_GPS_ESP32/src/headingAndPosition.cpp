@@ -54,6 +54,7 @@ bool bNMEAstarted = false, bGGAexists = false;
 String sNMEA;
 int16_t i, iPos;
 int8_t cFixQualGGA;
+int16_t hdopGGA = -1;//HDOP from the F9P's GGA in hundredths, -1 = none parsed yet
 // END ai, 07.10.2020: use the GGA Message to determine Fix-Quality
 
 time_t previousMillisHz;

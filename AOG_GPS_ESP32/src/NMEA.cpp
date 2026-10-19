@@ -114,6 +114,21 @@ static void appendHundredths( uint8_t* buffer, uint8_t& digit, long v, uint8_t i
 	buffer[digit++] = (v % 10) + 48;
 }
 
+//DOP from a count of hundredths as d.dd or dd.dd, no leading zero
+static void appendDOP( uint8_t* buffer, uint8_t& digit, uint16_t v ) {
+	if (v > 9999) { v = 9999; }
+	if (v >= 1000) { buffer[digit++] = (v / 1000) + 48; }
+	buffer[digit++] = ((v / 100) % 10) + 48;
+	buffer[digit++] = 0x2E;//.
+	buffer[digit++] = ((v / 10) % 10) + 48;
+	buffer[digit++] = (v % 10) + 48;
+}
+
+//HDOP in hundredths from the F9P's GGA; without a GGA on UART1 NAV-PVT pDOP, which is >= HDOP
+static uint16_t hdopE2() {
+	return (hdopGGA >= 0) ? hdopGGA : epochPVT.pDOP;
+}
+
 //HeadingMix in hundredths of a degree, 359.996 rounds to 36000 and is sent as 000.00
 static long headingE2() {
 	long v = lround(HeadingMix * 100);
@@ -203,13 +218,8 @@ void buildOGI() {
 	OGIBuffer[OGIdigit++] = temp + 48;
 	OGIBuffer[OGIdigit++] = 0x2C;//,
 
-	unsigned short pDOP = epochPVT.pDOP;//Disolution of Position  might be wrong item and/or wrong scale
-	OGIBuffer[OGIdigit++] = (pDOP / 100) + 48;
-	pDOP = pDOP % 100;
-	OGIBuffer[OGIdigit++] = 0x2E;//.
-	OGIBuffer[OGIdigit++] = (pDOP / 10) + 48;
-	pDOP = pDOP % 10;
-	OGIBuffer[OGIdigit++] = pDOP + 48;
+	//HDOP
+	appendDOP(OGIBuffer, OGIdigit, hdopE2());
 	OGIBuffer[OGIdigit++] = 0x2C;//,
 
 	//height main sea level mm
@@ -397,13 +407,8 @@ void buildGGA() {
 	GGABuffer[GGAdigit++] = temp + 48;
 	GGABuffer[GGAdigit++] = 0x2C;//,
 
-	unsigned short pDOP = epochPVT.pDOP;//Disolution of Position  might be wrong item and/or wrong scale
-	GGABuffer[GGAdigit++] = (pDOP / 100) + 48;
-	pDOP = pDOP % 100;
-	GGABuffer[GGAdigit++] = 0x2E;//.
-	GGABuffer[GGAdigit++] = (pDOP / 10) + 48;
-	pDOP = pDOP % 10;
-	GGABuffer[GGAdigit++] = pDOP + 48;
+	//HDOP
+	appendDOP(GGABuffer, GGAdigit, hdopE2());
 	GGABuffer[GGAdigit++] = 0x2C;//,
 
 	long templng = epochPVT.hMSL;//height main sea level mm
