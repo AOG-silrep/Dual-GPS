@@ -221,5 +221,5 @@ void diagnosticDisplay ( void* z ){
 }
 
 void initDiagnosticDisplay() {
-  xTaskCreate( diagnosticDisplay, "diagnosticDisplay", 2048, NULL, 2, NULL );
+  xTaskCreate( diagnosticDisplay, "diagnosticDisplay", 4096, NULL, 2, NULL );
 }
