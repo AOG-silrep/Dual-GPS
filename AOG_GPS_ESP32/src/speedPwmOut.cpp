@@ -29,5 +29,5 @@ void initSpeedPWM() {
 
   ledcAttach( gpsConfig.gpioVelocityPWM, gpsConfig.velocityHzPerMPH, LEDC_TIMER_10_BIT );
   ledcWrite( gpsConfig.gpioVelocityPWM, 512 ); // 50% duty cycle
-  xTaskCreate( SpeedPWM, "SpeedPWM", 2048, NULL, 2, NULL );
+  xTaskCreate( SpeedPWM, "SpeedPWM", 4096, NULL, 2, NULL );
 }
