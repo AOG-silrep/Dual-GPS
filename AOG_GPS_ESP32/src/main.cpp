@@ -69,7 +69,6 @@ void setup( void ) {
 
   NmeaTransmitter.begin( gpsConfig.serialNmeaBaudrate, SWSERIAL_8N1, -1, gpsConfig.gpioSerialNmea );
   NmeaTransmitter.enableIntTx( false );
-  nmeaMessageDelay = 1000 / gpsConfig.serialNmeaMessagesPerSec;
 
   pinMode( gpsConfig.gpioWifiLed, OUTPUT );
   pinMode( gpsConfig.gpioDcPowerGood, INPUT );
@@ -137,9 +136,9 @@ void setup( void ) {
   
   initIdleStats();
 
+  initNmeaOut();//before headingAndPosition, which notifies it
   initHeadingAndPosition();
   initSerialUbxReceivers();
-  initNmeaOut();
   initSpeedPWM();
   initDiagnosticDisplay();
 

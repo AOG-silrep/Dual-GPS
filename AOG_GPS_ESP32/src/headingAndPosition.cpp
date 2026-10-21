@@ -95,6 +95,15 @@ void queueSerialNmea( QueueHandle_t queue, const uint8_t* buffer, uint8_t length
 	xQueueOverwrite( queue, &message );
 }
 
+//true once per 1000 / hz ms of GPS time, so 1 Hz goes out on the whole GPS second
+static bool serialNmeaDue( uint8_t hz, uint32_t& lastSlot ){
+	if( hz == 0 ){ return false; }
+	const uint32_t slot = epochPVT.iTOW / ( 1000 / hz );
+	if( slot == lastSlot ){ return false; }
+	lastSlot = slot;
+	return true;
+}
+
 bool powerUnstable = false;
 time_t powerUnstableMillis = 0;
 uint8_t udpHelloCounter;
@@ -734,17 +743,26 @@ void headingAndPosition ( void* z ){
 				udpRoof.writeTo( HDTBuffer, HDTdigit, ipDestination, gpsConfig.aogPortSendTo );
 				newHDT = false;
 			}
-			if( gpsConfig.sendSerialNmeaHDT ){
-				queueSerialNmea( HDTQueue, HDTBuffer, HDTdigit );
-			}
-			if( gpsConfig.sendSerialNmeaVTG ){
-				queueSerialNmea( VTGQueue, VTGBuffer, VTGdigit );
-			}
-			if( gpsConfig.sendSerialNmeaGGA ){
-				queueSerialNmea( GGAQueue, GGABuffer, GGAdigit );
-			}
-			if( gpsConfig.sendSerialNmeaRMC ){
-				queueSerialNmea( RMCQueue, RMCBuffer, RMCdigit );
+			{
+				static uint32_t HDTSlot = UINT32_MAX, VTGSlot = UINT32_MAX, GGASlot = UINT32_MAX, RMCSlot = UINT32_MAX;
+				bool serialNmeaQueued = false;
+				if( serialNmeaDue( gpsConfig.serialNmeaHDTHz, HDTSlot )){
+					queueSerialNmea( HDTQueue, HDTBuffer, HDTdigit );
+					serialNmeaQueued = true;
+				}
+				if( serialNmeaDue( gpsConfig.serialNmeaVTGHz, VTGSlot )){
+					queueSerialNmea( VTGQueue, VTGBuffer, VTGdigit );
+					serialNmeaQueued = true;
+				}
+				if( serialNmeaDue( gpsConfig.serialNmeaGGAHz, GGASlot )){
+					queueSerialNmea( GGAQueue, GGABuffer, GGAdigit );
+					serialNmeaQueued = true;
+				}
+				if( serialNmeaDue( gpsConfig.serialNmeaRMCHz, RMCSlot )){
+					queueSerialNmea( RMCQueue, RMCBuffer, RMCdigit );
+					serialNmeaQueued = true;
+				}
+				if( serialNmeaQueued ){ xTaskNotifyGive( nmeaOutTask ); }
 			}
 			gpsHzCurrentMillis = millis() - previousMillisHz;
 			previousMillisHz = millis();

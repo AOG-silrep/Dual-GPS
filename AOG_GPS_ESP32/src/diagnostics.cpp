@@ -176,22 +176,22 @@ void diagnosticDisplay ( void* z ){
 
     {
       str = "";
-      if( gpsConfig.sendSerialNmeaVTG ){
+      if( gpsConfig.serialNmeaVTGHz ){
         for( uint8_t i = 0; i < sizeOfVTGBuffer; i++ ){
           str += ( char ) VTGBuffer[i];
         }
       }
-      if( gpsConfig.sendSerialNmeaGGA ){
+      if( gpsConfig.serialNmeaGGAHz ){
         for( uint8_t i = 0; i < sizeOfGGABuffer; i++ ){
           str += ( char ) GGABuffer[i];
         }
       }
-      if( gpsConfig.sendSerialNmeaHDT ){
+      if( gpsConfig.serialNmeaHDTHz ){
         for( uint8_t i = 0; i < sizeOfHDTBuffer; i++ ){
           str += ( char ) HDTBuffer[i];
         }
       }
-      if( gpsConfig.sendSerialNmeaRMC ){
+      if( gpsConfig.serialNmeaRMCHz ){
         for( uint8_t i = 0; i < sizeOfRMCBuffer; i++ ){
           str += ( char ) RMCBuffer[i];
         }

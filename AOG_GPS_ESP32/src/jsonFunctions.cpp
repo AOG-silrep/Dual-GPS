@@ -107,12 +107,11 @@ json parseGpsConfigToJson( const GPS_Config& config ) {
   j["gps"]["GPSPositionCorrectionByRoll"] = config.GPSPosCorrByRoll;
   j["gps"]["rollAngleCorrection"] = config.rollAngleCorrection;
   
-  j["serialNmea"]["sendVTG"] = config.sendSerialNmeaVTG;
-  j["serialNmea"]["sendGGA"] = config.sendSerialNmeaGGA;
-  j["serialNmea"]["sendHDT"] = config.sendSerialNmeaHDT;
-  j["serialNmea"]["sendRMC"] = config.sendSerialNmeaRMC;
+  j["serialNmea"]["VTGHz"] = config.serialNmeaVTGHz;
+  j["serialNmea"]["GGAHz"] = config.serialNmeaGGAHz;
+  j["serialNmea"]["HDTHz"] = config.serialNmeaHDTHz;
+  j["serialNmea"]["RMCHz"] = config.serialNmeaRMCHz;
   j["serialNmea"]["serialNmeaBaudrate"] = config.serialNmeaBaudrate;
-  j["serialNmea"]["serialNmeaMessagesPerSecond"] = config.serialNmeaMessagesPerSec;
 
   j["messages"]["sendOGI"] = config.sendOGI;
   j["messages"]["sendVTG"] = config.sendVTG;
@@ -136,6 +135,19 @@ json parseGpsConfigToJson( const GPS_Config& config ) {
   j["connection"]["aog"]["sendTo"] = config.aogPortSendTo;
 
   return j;
+}
+
+//serial NMEA rate of one message, imported from the old on/off switch and shared messages per second
+static uint8_t loadSerialNmeaHz( const json& j, const char* message, uint8_t defaultHz, int legacyHz ) {
+  const json::json_pointer hzKey( std::string( "/serialNmea/" ) + message + "Hz" );
+  const json::json_pointer sendKey( std::string( "/serialNmea/send" ) + message );
+  if( j.contains( hzKey ) ) {
+    return snapSerialNmeaHz( j.value( hzKey, int( defaultHz ) ) );
+  }
+  if( j.contains( sendKey ) ) {
+    return j.value( sendKey, 0 ) != 0 ? snapSerialNmeaHz( legacyHz ) : 0;
+  }
+  return defaultHz;
 }
 
 void parseJsonToGpsConfig( json& j, GPS_Config& config ) {
@@ -171,12 +183,14 @@ void parseJsonToGpsConfig( json& j, GPS_Config& config ) {
       config.GPSPosCorrByRoll = j.value( "/gps/GPSPositionCorrectionByRoll"_json_pointer, gpsConfigDefaults.GPSPosCorrByRoll );
       config.rollAngleCorrection = j.value( "/gps/rollAngleCorrection"_json_pointer, gpsConfigDefaults.rollAngleCorrection );
 
-      config.sendSerialNmeaVTG = j.value( "/serialNmea/sendVTG"_json_pointer, gpsConfigDefaults.sendSerialNmeaVTG );
-      config.sendSerialNmeaGGA = j.value( "/serialNmea/sendGGA"_json_pointer, gpsConfigDefaults.sendSerialNmeaGGA );
-      config.sendSerialNmeaHDT = j.value( "/serialNmea/sendHDT"_json_pointer, gpsConfigDefaults.sendSerialNmeaHDT );
-      config.sendSerialNmeaRMC = j.value( "/serialNmea/sendRMC"_json_pointer, gpsConfigDefaults.sendSerialNmeaRMC );
+      {
+        const int legacyHz = j.value( "/serialNmea/serialNmeaMessagesPerSecond"_json_pointer, 5 );
+        config.serialNmeaVTGHz = loadSerialNmeaHz( j, "VTG", gpsConfigDefaults.serialNmeaVTGHz, legacyHz );
+        config.serialNmeaGGAHz = loadSerialNmeaHz( j, "GGA", gpsConfigDefaults.serialNmeaGGAHz, legacyHz );
+        config.serialNmeaHDTHz = loadSerialNmeaHz( j, "HDT", gpsConfigDefaults.serialNmeaHDTHz, legacyHz );
+        config.serialNmeaRMCHz = loadSerialNmeaHz( j, "RMC", gpsConfigDefaults.serialNmeaRMCHz, legacyHz );
+      }
       config.serialNmeaBaudrate = j.value( "/serialNmea/serialNmeaBaudrate"_json_pointer, gpsConfigDefaults.serialNmeaBaudrate );
-      config.serialNmeaMessagesPerSec = j.value( "/serialNmea/serialNmeaMessagesPerSecond"_json_pointer, gpsConfigDefaults.serialNmeaMessagesPerSec );
 
       config.sendOGI = j.value( "/messages/sendOGI"_json_pointer, gpsConfigDefaults.sendOGI );
       config.sendVTG = j.value( "/messages/sendVTG"_json_pointer, gpsConfigDefaults.sendVTG );

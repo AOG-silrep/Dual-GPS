@@ -22,6 +22,19 @@ void setResetButtonToRed() {
   ESPUI.updateControl( buttonReset );
 }
 
+//serial NMEA rate, takes effect on the next GPS fix
+static void addSerialNmeaRateSelect( const char* label, uint8_t& hz, uint16_t tab ) {
+  uint16_t select = ESPUI.addControl( ControlType::Select, label, String( hz ), ControlColor::Peterriver, tab,
+  [&hz]( Control * control, int id ) {
+    hz = snapSerialNmeaHz( control->value.toInt() );
+  } );
+  ESPUI.addControl( ControlType::Option, "Off", "0", ControlColor::Alizarin, select );
+  ESPUI.addControl( ControlType::Option, "1 Hz", "1", ControlColor::Alizarin, select );
+  ESPUI.addControl( ControlType::Option, "2 Hz", "2", ControlColor::Alizarin, select );
+  ESPUI.addControl( ControlType::Option, "5 Hz", "5", ControlColor::Alizarin, select );
+  ESPUI.addControl( ControlType::Option, "10 Hz", "10", ControlColor::Alizarin, select );
+}
+
 void initESPUI ( void ) {
 
   //an update that does not fit is split, and each fragment is read from the control's current value,
@@ -252,22 +265,10 @@ void initESPUI ( void ) {
   {
     uint16_t tab = ESPUI.addControl( ControlType::Tab, "Serial NMEA out", "Serial NMEA out" );
 
-    ESPUI.addControl( ControlType::Switcher, "Send $VTG", gpsConfig.sendSerialNmeaVTG ? "1" : "0", ControlColor::Peterriver, tab,
-    []( Control * control, int id ) {
-      gpsConfig.sendSerialNmeaVTG = control->value.toInt() == 1;
-    } );
-    ESPUI.addControl( ControlType::Switcher, "Send $GGA", gpsConfig.sendSerialNmeaGGA ? "1" : "0", ControlColor::Peterriver, tab,
-    []( Control * control, int id ) {
-      gpsConfig.sendSerialNmeaGGA = control->value.toInt() == 1;
-    } );
-    ESPUI.addControl( ControlType::Switcher, "Send $HDT", gpsConfig.sendSerialNmeaHDT ? "1" : "0", ControlColor::Peterriver, tab,
-    []( Control * control, int id ) {
-      gpsConfig.sendSerialNmeaHDT = control->value.toInt() == 1;
-    } );
-    ESPUI.addControl( ControlType::Switcher, "Send $RMC", gpsConfig.sendSerialNmeaRMC ? "1" : "0", ControlColor::Peterriver, tab,
-    []( Control * control, int id ) {
-      gpsConfig.sendSerialNmeaRMC = control->value.toInt() == 1;
-    } );
+    addSerialNmeaRateSelect( "Send $VTG", gpsConfig.serialNmeaVTGHz, tab );
+    addSerialNmeaRateSelect( "Send $GGA", gpsConfig.serialNmeaGGAHz, tab );
+    addSerialNmeaRateSelect( "Send $HDT", gpsConfig.serialNmeaHDTHz, tab );
+    addSerialNmeaRateSelect( "Send $RMC", gpsConfig.serialNmeaRMCHz, tab );
 
     {
       uint16_t baudrate = ESPUI.addControl( ControlType::Select, "Serial NMEA Baudrate*", String( gpsConfig.serialNmeaBaudrate ), ControlColor::Wetasphalt, tab,
@@ -281,17 +282,6 @@ void initESPUI ( void ) {
       ESPUI.addControl( ControlType::Option, "38400", "38400", ControlColor::Alizarin, baudrate );
       ESPUI.addControl( ControlType::Option, "57600", "57600", ControlColor::Alizarin, baudrate );
       ESPUI.addControl( ControlType::Option, "115200", "115200", ControlColor::Alizarin, baudrate );
-    }
-    {
-      uint16_t num = ESPUI.addControl( ControlType::Number, "NMEA Messages per Second*", String( gpsConfig.serialNmeaMessagesPerSec ), ControlColor::Wetasphalt, tab,
-      []( Control * control, int id ) {
-        uint8_t value = control->value.toInt();
-        gpsConfig.serialNmeaMessagesPerSec = constrain( value, 1, 10 );
-        setResetButtonToRed();
-      } );
-      ESPUI.addControl( ControlType::Min, "Min", "0", ControlColor::Peterriver, num );
-      ESPUI.addControl( ControlType::Max, "Max", "8", ControlColor::Peterriver, num );
-      ESPUI.addControl( ControlType::Step, "Step", "1", ControlColor::Peterriver, num );
     }
   }
 

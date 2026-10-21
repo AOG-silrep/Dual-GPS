@@ -86,8 +86,6 @@ extern double VarProcessSlow;
 extern double VarProcessVerySlow;
 extern bool filterGPSpos;
 
-extern uint16_t nmeaMessageDelay;
-
 extern double HeadingQuotaVTG;
 
 extern double virtLat, virtLon;
@@ -184,6 +182,17 @@ extern QueueHandle_t HDTQueue;
 extern QueueHandle_t VTGQueue;
 extern QueueHandle_t GGAQueue;
 extern QueueHandle_t RMCQueue;
+extern TaskHandle_t nmeaOutTask;//headingAndPosition notifies it after queueing
+
+//serial NMEA rate in Hz, 0: off. The largest of 0, 1, 2, 5, 10 that is not above hz,
+//so an old or hand-edited setting never sends faster than asked
+inline uint8_t snapSerialNmeaHz( int hz ){
+  if( hz >= 10 ){ return 10; }
+  if( hz >= 5 ){ return 5; }
+  if( hz >= 2 ){ return 2; }
+  if( hz >= 1 ){ return 1; }
+  return 0;
+}
 
 //UBX
 extern uint8_t UBXRingCount1, UBXRingCount2, UBXDigit1, UBXDigit2, OGIfromUBX;
@@ -277,12 +286,11 @@ struct GPS_Config {
   uint8_t gpioGpsTX2 = 17;              //left F9P RX1 Heading
 
   uint8_t gpioSerialNmea = 19;
-  bool sendSerialNmeaVTG = 0;                     //1: send Nmea message 0: off
-  bool sendSerialNmeaGGA = 1;                     //1: send Nmea message 0: off
-  bool sendSerialNmeaHDT = 0;                     //1: send Nmea message 0: off
-  bool sendSerialNmeaRMC = 0;                     //1: send Nmea message 0: off
+  uint8_t serialNmeaVTGHz = 0;                    //0: off, else 1, 2, 5 or 10 Hz
+  uint8_t serialNmeaGGAHz = 5;                    //0: off, else 1, 2, 5 or 10 Hz
+  uint8_t serialNmeaHDTHz = 0;                    //0: off, else 1, 2, 5 or 10 Hz
+  uint8_t serialNmeaRMCHz = 0;                    //0: off, else 1, 2, 5 or 10 Hz
   uint16_t serialNmeaBaudrate = 38400;
-  uint8_t serialNmeaMessagesPerSec = 5;
 
   uint8_t gpioVelocityPWM = 15;      // Velocity (MPH speed) PWM pin
   int velocityHzPerMPH = 50; // PWM (MPH * multiplier)
