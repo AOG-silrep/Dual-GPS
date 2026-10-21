@@ -33,9 +33,11 @@ void WiFiStationGotIP( WiFiEvent_t event, WiFiEventInfo_t info ){
       if ( !WiFi.config( myIP, gwIP, IPAddress( 255, 255, 255, 0 ), gwIP )) {
         Serial.println( "STA Failed to configure" );
       }
-      Serial.println( "Switching off AP, station only" );
-      WiFi.softAPdisconnect ( true );
-      WiFi.mode( WIFI_MODE_STA );
+      if( WiFi.getMode() & WIFI_MODE_AP ){//softAPdisconnect starts the AP first if it is off
+        Serial.println( "Switching off AP, station only" );
+        WiFi.softAPdisconnect ( true );
+        WiFi.mode( WIFI_MODE_STA );
+      }
   }
   delay( 10 );
   digitalWrite( gpsConfig.gpioWifiLed, gpsConfig.WifiLedOnLevel );
@@ -45,16 +47,15 @@ void WiFiStationGotIP( WiFiEvent_t event, WiFiEventInfo_t info ){
 void WiFiStationDisconnected( WiFiEvent_t event, WiFiEventInfo_t info ){
   digitalWrite( gpsConfig.gpioWifiLed, !gpsConfig.WifiLedOnLevel );
   if( WiFiWasConnected == true ){
-    WiFi.disconnect( true );
+    //back to DHCP, WiFiStationGotIP moves the address to .79 again
     if( !WiFi.config( INADDR_NONE, INADDR_NONE, INADDR_NONE ) ) {
       Serial.println( "STA Failed to unset configuration" );
     }
-    delay( 25 );
-    WiFi.begin( gpsConfig.ssid, gpsConfig.password );
     Serial.println( "reconnecting" );
-  } else {
-    WiFi.reconnect();
   }
+  //keep the STA on: WiFi.disconnect( true ) turns WiFi off in STA only mode, and Arduino 3 then
+  //frees the STA and AP netifs that mDNS still holds (LoadProhibited in _udp_join_group)
+  WiFi.reconnect();
 }
 
 void WiFiStationConnected( WiFiEvent_t event, WiFiEventInfo_t info ){
