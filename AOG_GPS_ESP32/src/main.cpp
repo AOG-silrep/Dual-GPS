@@ -41,6 +41,27 @@ SoftwareSerial NmeaTransmitter;
 // helper functions
 ///////////////////////////////////////////////////////////////////////////
 
+const char* resetReasonName( esp_reset_reason_t reason ){
+  switch( reason ){
+    case ESP_RST_POWERON:   return "power on";
+    case ESP_RST_EXT:       return "external pin";
+    case ESP_RST_SW:        return "software restart";
+    case ESP_RST_PANIC:     return "crash (panic)";
+    case ESP_RST_INT_WDT:   return "interrupt watchdog";
+    case ESP_RST_TASK_WDT:  return "task watchdog";
+    case ESP_RST_WDT:       return "other watchdog";
+    case ESP_RST_DEEPSLEEP: return "deep sleep wake";
+    case ESP_RST_BROWNOUT:  return "brownout (supply dip)";
+    case ESP_RST_SDIO:      return "SDIO";
+    default:                return "unknown";
+  }
+}
+
+//power on and a restart from the web UI, OTA or DHCP are expected; the rest point at a fault
+bool resetReasonUnexpected( esp_reset_reason_t reason ){
+  return reason != ESP_RST_POWERON && reason != ESP_RST_SW;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////
 // Application
@@ -66,6 +87,8 @@ void setup( void ) {
 
   Serial.updateBaudRate( gpsConfig.baudrate );
   Serial.println( "Welcome to ESP32 Dual GPS.\nTo configure, please open the WebUI." );
+  Serial.print( "Last reset: " );
+  Serial.println( resetReasonName( esp_reset_reason() ));
 
   NmeaTransmitter.begin( gpsConfig.serialNmeaBaudrate, SWSERIAL_8N1, -1, gpsConfig.gpioSerialNmea );
   NmeaTransmitter.enableIntTx( false );

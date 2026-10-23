@@ -68,7 +68,11 @@ void initESPUI ( void ) {
     String buildDate = String( __DATE__ );
     buildDate += String( " " );
     buildDate += String( __TIME__ );
-    ESPUI.addControl( ControlType::Label, "Build date", buildDate, ControlColor::Turquoise, tab );
+    esp_reset_reason_t reason = esp_reset_reason();
+    buildDate += "\nLast reset: ";
+    buildDate += resetReasonName( reason );
+    ESPUI.addControl( ControlType::Label, "Build date", buildDate,
+                      resetReasonUnexpected( reason ) ? ControlColor::Alizarin : ControlColor::Turquoise, tab );
 
     labelAgOpenGpsAddress = ESPUI.addControl( ControlType::Label, "AgOpenGPS Address", "N/A", ControlColor::Turquoise, tab );
     labelGpsReceivers = ESPUI.addControl( ControlType::Label, "GPS receivers", "", ControlColor::Turquoise, tab );

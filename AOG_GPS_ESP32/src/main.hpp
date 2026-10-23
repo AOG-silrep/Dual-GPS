@@ -372,6 +372,8 @@ class TCritSect {
 // Helper Functions
 ///////////////////////////////////////////////////////////////////////////
 extern void setResetButtonToRed();
+extern const char* resetReasonName( esp_reset_reason_t reason );
+extern bool resetReasonUnexpected( esp_reset_reason_t reason );
 
 extern void initESPUI();
 extern void initIdleStats();
