@@ -61,6 +61,52 @@ static void updateLabel( uint16_t label, const String& str, bool alarm ) {
   ESPUI.updateControl( labelHandle );
 }
 
+//PGN 0xDD: AgOpenGPS shows the text in its message banner, same bytes 5 and 6 as the autosteer module
+static void sendAogMessage( const String& text ) {
+  uint8_t data[64];
+  size_t textLength = min( text.length(), sizeof( data ) - 9 );
+  data[0] = 0x80;
+  data[1] = 0x81;
+  data[2] = 0x7C;//source: GPS
+  data[3] = 0xDD;
+  data[4] = textLength + 3;//bytes 5 and 6, the text and its terminating 0
+  data[5] = 3;
+  data[6] = 1;
+  memcpy( data + 7, text.c_str(), textLength );
+  data[7 + textLength] = 0;
+  uint8_t crc = 0;
+  for( size_t i = 2; i < 8 + textLength; i++ ){
+    crc += data[i];
+  }
+  data[8 + textLength] = crc;
+  udpRoof.writeTo( data, 9 + textLength, ipDestination, gpsConfig.aogPortSendTo );
+}
+
+enum class GpsProblem : uint8_t { none, powerLow, powerUnstable, navPvtStale, relPosNedStale, headingStale };
+
+//a new problem is sent at once, the same one again only after the cooldown, so the banner is not spammed
+static void showGpsProblemOnAOG( GpsProblem problem, const String& text ) {
+  constexpr time_t cooldownMillis = 30000;
+  static GpsProblem lastProblem = GpsProblem::none;
+  static time_t lastSentMillis = 0;
+  if( problem != GpsProblem::none and ( problem != lastProblem or millis() - lastSentMillis >= cooldownMillis )){
+    sendAogMessage( text );
+    lastSentMillis = millis();
+  }
+  lastProblem = problem;
+}
+
+//seconds since the last message, or "none received"
+static void addAge( String& str, time_t lastMillis ) {
+  if( lastMillis == 0 ){
+    str += "none received";
+  } else {
+    str += "none for ";
+    str += ( millis() - lastMillis ) / 1000;
+    str += " s";
+  }
+}
+
 void diagnosticDisplay ( void* z ){
   constexpr TickType_t xFrequency = 1000;
   TickType_t xLastWakeTime = xTaskGetTickCount();
@@ -164,6 +210,28 @@ void diagnosticDisplay ( void* z ){
     addRow( str, "Stale at NAV-PVT (> 2 epochs)", StaleRelPosNedCount );
     str += "</table>";
     updateLabel( labelRelPosNed, str, relPosNedStale );
+
+    //the most important problem only, in the words of the labels above
+    GpsProblem problem = GpsProblem::none;
+    if( power == LOW ){
+      problem = GpsProblem::powerLow;
+      str = "GPS: DC power low";
+    } else if( powerUnstable == true ){
+      problem = GpsProblem::powerUnstable;
+      str = "GPS: DC power unstable";
+    } else if( navPvtStale ){
+      problem = GpsProblem::navPvtStale;
+      str = "GPS: NAV-PVT ";
+      addAge( str, NavPvtMillis );
+    } else if( existsUBXRelPosNED and relPosNedStale ){
+      problem = GpsProblem::relPosNedStale;
+      str = "GPS: RelPosNED ";
+      addAge( str, RelPosNedMillis );
+    } else if( existsUBXRelPosNED and !relPosNedFresh ){
+      problem = GpsProblem::headingStale;
+      str = "Dual GPS: stale heading";
+    }
+    showGpsProblemOnAOG( problem, str );
 
     str = "Pwm: ";
     str += mphPwm;
